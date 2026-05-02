@@ -1,0 +1,101 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:Wartownik.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="560"
+        x:Class="Wartownik.RoleEditorWindow"
+        x:DataType="vm:RoleEditorViewModel"
+        Title="{Binding Title, FallbackValue='Role'}"
+        Width="500" Height="560"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="#0F172A"
+        TransparencyLevelHint="None"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="32">
+
+    <Grid RowDefinitions="32,*">
+
+        <!-- Custom title bar with close button only (dialog). -->
+        <Grid Grid.Row="0" Background="#0F172A" ColumnDefinitions="*,Auto">
+            <Border Grid.Column="0"
+                    Background="#0F172A"
+                    PointerPressed="OnTitleBarPointerPressed" />
+            <Button Grid.Column="1"
+                    Classes="caption close"
+                    Content="&#xE8BB;"
+                    FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                    ToolTip.Tip="Close"
+                    Click="OnCloseClick" />
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="32,16,32,24" RowDefinitions="Auto,*,Auto,Auto">
+
+            <TextBlock Grid.Row="0"
+                       Classes="h2"
+                       Text="{Binding Title, FallbackValue='Role'}"
+                       Margin="0,0,0,20" />
+
+            <ScrollViewer Grid.Row="1" Padding="0,0,4,0">
+                <StackPanel Spacing="14">
+
+                    <StackPanel Classes="form-section">
+                        <TextBlock Classes="label"
+                                   Text="{Binding Localization[Role.Name], FallbackValue='Role name'}" />
+                        <TextBox Text="{Binding RoleName}"
+                                 IsEnabled="{Binding IsRoleNameEditable}" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="8">
+                        <CheckBox IsChecked="{Binding CanLogin}"
+                                  Content="{Binding Localization[Role.CanLogin], FallbackValue='Allow login'}" />
+                        <CheckBox IsChecked="{Binding IsSuperuser}"
+                                  Content="{Binding Localization[Role.IsSuperuser], FallbackValue='Superuser'}" />
+                        <CheckBox IsChecked="{Binding CanCreateDb}"
+                                  Content="{Binding Localization[Role.CanCreateDb], FallbackValue='Can create databases'}" />
+                        <CheckBox IsChecked="{Binding CanCreateRole}"
+                                  Content="{Binding Localization[Role.CanCreateRole], FallbackValue='Can create roles'}" />
+                    </StackPanel>
+
+                    <StackPanel Classes="form-section"
+                                IsEnabled="{Binding IsPasswordEnabled}">
+                        <TextBlock Classes="label"
+                                   Text="{Binding Localization[Role.Password], FallbackValue='Password'}" />
+                        <TextBox Text="{Binding RolePassword}" PasswordChar="*" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Border Grid.Row="2"
+                    Margin="0,12,0,0"
+                    Padding="12,10"
+                    CornerRadius="6"
+                    Background="#1AE53935"
+                    BorderBrush="#88E53935"
+                    BorderThickness="1"
+                    IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Text="{Binding ErrorMessage}"
+                           Foreground="#FFE53935"
+                           TextWrapping="Wrap" />
+            </Border>
+
+            <StackPanel Grid.Row="3"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8"
+                        Margin="0,20,0,0">
+                <Button Content="{Binding Localization[Common.Cancel], FallbackValue='Cancel'}"
+                        Click="OnCancel"
+                        Padding="20,8"
+                        MinWidth="100" />
+                <Button Content="{Binding Localization[Common.Save], FallbackValue='Save'}"
+                        Classes="accent"
+                        Click="OnSave"
+                        Padding="20,8"
+                        MinWidth="100" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

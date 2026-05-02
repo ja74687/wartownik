@@ -20,4 +20,6 @@ public partial class ConfirmationWindow : Window
     private void OnConfirm(object? sender, RoutedEventArgs e) => Close(true);
 
     private void OnCancel(object? sender, RoutedEventArgs e) => Close(false);
+
+    private void OnCloseClick(object? sender, RoutedEventArgs e) => Close(false);
 }

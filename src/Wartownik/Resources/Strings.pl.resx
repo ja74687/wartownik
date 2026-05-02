@@ -76,6 +76,51 @@
   <data name="Profiles.NoneYet" xml:space="preserve">
     <value>Brak profili.</value>
   </data>
+  <data name="Profiles.SearchPlaceholder" xml:space="preserve">
+    <value>Szukaj profili po nazwie, hoście lub bazie…</value>
+  </data>
+  <data name="Profiles.CountConfigured" xml:space="preserve">
+    <value>Skonfigurowane profile: {0}</value>
+  </data>
+  <data name="Profiles.CountConfiguredOne" xml:space="preserve">
+    <value>1 skonfigurowany profil</value>
+  </data>
+  <data name="Profiles.CountConfiguredZero" xml:space="preserve">
+    <value>Brak skonfigurowanych profili</value>
+  </data>
+  <data name="Profiles.NoSearchResults" xml:space="preserve">
+    <value>Brak profili pasujących do wyszukiwania.</value>
+  </data>
+  <data name="Profiles.TipImport" xml:space="preserve">
+    <value>Wskazówka · Przeciągnij plik JSON z konfiguracją połączenia w to okno aby go zaimportować.</value>
+  </data>
+  <data name="Profiles.SettingsTab" xml:space="preserve">
+    <value>Ustawienia</value>
+  </data>
+  <data name="Profiles.SettingsComingSoon" xml:space="preserve">
+    <value>Ustawienia profilu (powiadomienia, domyślne wartości, retencja audytu) — wkrótce.</value>
+  </data>
+  <data name="Profiles.TipRolesTab" xml:space="preserve">
+    <value>Wskazówka · Użyj Users dla ról logowania, a Role dla grup (bez logowania).</value>
+  </data>
+  <data name="Users.Title" xml:space="preserve">
+    <value>Użytkownicy</value>
+  </data>
+  <data name="Users.Empty" xml:space="preserve">
+    <value>Brak widocznych ról logowania dla tego użytkownika.</value>
+  </data>
+  <data name="Users.AddNew" xml:space="preserve">
+    <value>Dodaj użytkownika</value>
+  </data>
+  <data name="Status.Connected" xml:space="preserve">
+    <value>połączono</value>
+  </data>
+  <data name="Status.Disconnected" xml:space="preserve">
+    <value>brak połączenia</value>
+  </data>
+  <data name="Status.Checking" xml:space="preserve">
+    <value>sprawdzanie…</value>
+  </data>
   <data name="Profiles.Delete" xml:space="preserve">
     <value>Usuń</value>
   </data>
@@ -150,5 +195,80 @@
   </data>
   <data name="Databases.LoadFailed" xml:space="preserve">
     <value>Nie udało się pobrać baz:</value>
+  </data>
+  <data name="Schemas.Title" xml:space="preserve">
+    <value>Schematy</value>
+  </data>
+  <data name="Schemas.Empty" xml:space="preserve">
+    <value>Brak schem zdefiniowanych przez użytkownika w tej bazie.</value>
+  </data>
+  <data name="Schemas.LoadFailed" xml:space="preserve">
+    <value>Nie udało się pobrać schem:</value>
+  </data>
+  <data name="Roles.Title" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="Roles.Empty" xml:space="preserve">
+    <value>Brak widocznych ról dla tego użytkownika.</value>
+  </data>
+  <data name="Roles.LoadFailed" xml:space="preserve">
+    <value>Nie udało się pobrać ról:</value>
+  </data>
+  <data name="Roles.Superuser" xml:space="preserve">
+    <value>superuser</value>
+  </data>
+  <data name="Roles.CanLogin" xml:space="preserve">
+    <value>login</value>
+  </data>
+  <data name="Roles.NoLogin" xml:space="preserve">
+    <value>grupa</value>
+  </data>
+  <data name="Roles.AddNew" xml:space="preserve">
+    <value>Dodaj rolę</value>
+  </data>
+  <data name="Roles.CreateFailed" xml:space="preserve">
+    <value>Nie udało się utworzyć roli:</value>
+  </data>
+  <data name="Role.New" xml:space="preserve">
+    <value>Nowa rola</value>
+  </data>
+  <data name="Role.Edit" xml:space="preserve">
+    <value>Edycja roli</value>
+  </data>
+  <data name="Roles.Edit" xml:space="preserve">
+    <value>Edytuj rolę</value>
+  </data>
+  <data name="Roles.AlterFailed" xml:space="preserve">
+    <value>Nie udało się zmodyfikować roli:</value>
+  </data>
+  <data name="Role.Name" xml:space="preserve">
+    <value>Nazwa roli</value>
+  </data>
+  <data name="Role.CanLogin" xml:space="preserve">
+    <value>Pozwól na logowanie</value>
+  </data>
+  <data name="Role.Password" xml:space="preserve">
+    <value>Hasło</value>
+  </data>
+  <data name="Role.IsSuperuser" xml:space="preserve">
+    <value>Superuser</value>
+  </data>
+  <data name="Role.CanCreateDb" xml:space="preserve">
+    <value>Może tworzyć bazy</value>
+  </data>
+  <data name="Role.CanCreateRole" xml:space="preserve">
+    <value>Może tworzyć role</value>
+  </data>
+  <data name="Roles.Drop" xml:space="preserve">
+    <value>Usuń rolę</value>
+  </data>
+  <data name="Roles.DropConfirmTitle" xml:space="preserve">
+    <value>Usunąć rolę?</value>
+  </data>
+  <data name="Roles.DropConfirmMessage" xml:space="preserve">
+    <value>Usunąć rolę "{0}"? Tej operacji nie można cofnąć. Postgres odmówi jeśli rola jest właścicielem obiektów.</value>
+  </data>
+  <data name="Roles.DropFailed" xml:space="preserve">
+    <value>Nie udało się usunąć roli:</value>
   </data>
 </root>

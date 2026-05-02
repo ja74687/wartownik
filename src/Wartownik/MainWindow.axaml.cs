@@ -17,10 +17,17 @@ public partial class MainWindow : Window
             BeginMoveDrag(e);
     }
 
-    private void OnTitleBarDoubleTapped(object? sender, TappedEventArgs e)
-    {
+    private void OnTitleBarDoubleTapped(object? sender, TappedEventArgs e) => ToggleMaximize();
+
+    private void OnMinimizeClick(object? sender, RoutedEventArgs e) =>
+        WindowState = WindowState.Minimized;
+
+    private void OnMaximizeClick(object? sender, RoutedEventArgs e) => ToggleMaximize();
+
+    private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
+
+    private void ToggleMaximize() =>
         WindowState = WindowState == WindowState.Maximized
             ? WindowState.Normal
             : WindowState.Maximized;
-    }
 }

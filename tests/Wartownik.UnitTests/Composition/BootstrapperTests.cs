@@ -142,6 +142,47 @@ public class BootstrapperTests : IDisposable
     }
 
     [Fact]
+    public void Resolves_postgres_role_admin_service()
+    {
+        var admin = _provider.GetRequiredService<IPostgresRoleAdminService>();
+
+        Assert.IsType<PostgresRoleAdminService>(admin);
+    }
+
+    [Fact]
+    public void Resolves_role_editor()
+    {
+        var editor = _provider.GetRequiredService<IRoleEditor>();
+
+        Assert.NotNull(editor);
+    }
+
+    [Fact]
+    public void Resolves_role_editor_view_model_as_transient()
+    {
+        var a = _provider.GetRequiredService<RoleEditorViewModel>();
+        var b = _provider.GetRequiredService<RoleEditorViewModel>();
+
+        Assert.NotSame(a, b);
+    }
+
+    [Fact]
+    public void Resolves_profile_details_factory()
+    {
+        var factory = _provider.GetRequiredService<MainWindowViewModel.ProfileDetailsFactory>();
+
+        Assert.NotNull(factory);
+    }
+
+    [Fact]
+    public void Resolves_database_details_factory()
+    {
+        var factory = _provider.GetRequiredService<ProfileDetailsViewModel.DatabaseDetailsFactory>();
+
+        Assert.NotNull(factory);
+    }
+
+    [Fact]
     public void Resolves_connection_profile_editor_view_model_as_transient()
     {
         var a = _provider.GetRequiredService<ConnectionProfileEditorViewModel>();

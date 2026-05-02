@@ -1,14 +1,13 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Wartownik.Connections;
 using Wartownik.ViewModels;
 
 namespace Wartownik;
 
-public partial class ConnectionProfileEditorWindow : Window
+public partial class RoleEditorWindow : Window
 {
-    public ConnectionProfileEditorWindow()
+    public RoleEditorWindow()
     {
         InitializeComponent();
     }
@@ -19,21 +18,27 @@ public partial class ConnectionProfileEditorWindow : Window
             BeginMoveDrag(e);
     }
 
-    private void OnCloseClick(object? sender, RoutedEventArgs e) => Close(null);
-
     private void OnSave(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is not ConnectionProfileEditorViewModel vm)
+        if (DataContext is not RoleEditorViewModel vm)
             return;
 
-        if (!vm.TryBuild(out var profile, out var password))
-            return;
-
-        Close(new ConnectionProfileEditResult(profile, password));
+        if (vm.IsEditMode)
+        {
+            if (vm.TryBuildAlter(out var alter))
+                Close(alter);
+        }
+        else
+        {
+            if (vm.TryBuildCreate(out var create))
+                Close(create);
+        }
     }
 
     private void OnCancel(object? sender, RoutedEventArgs e)
     {
         Close(null);
     }
+
+    private void OnCloseClick(object? sender, RoutedEventArgs e) => Close(null);
 }

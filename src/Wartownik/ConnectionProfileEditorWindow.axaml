@@ -10,17 +10,26 @@
         Width="520" Height="700"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
-        Background="Transparent"
-        TransparencyLevelHint="Mica,AcrylicBlur,Blur,None"
+        Background="#0F172A"
+        TransparencyLevelHint="None"
+        WindowDecorations="None"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="32">
 
     <Grid RowDefinitions="32,*">
 
-        <!-- Custom title bar (drag area) -->
-        <Border Grid.Row="0"
-                Background="Transparent"
-                PointerPressed="OnTitleBarPointerPressed" />
+        <!-- Custom title bar with close button only (dialog). -->
+        <Grid Grid.Row="0" Background="#0F172A" ColumnDefinitions="*,Auto">
+            <Border Grid.Column="0"
+                    Background="#0F172A"
+                    PointerPressed="OnTitleBarPointerPressed" />
+            <Button Grid.Column="1"
+                    Classes="caption close"
+                    Content="&#xE8BB;"
+                    FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                    ToolTip.Tip="Close"
+                    Click="OnCloseClick" />
+        </Grid>
 
         <Grid Grid.Row="1" Margin="32,16,32,24" RowDefinitions="Auto,*,Auto,Auto">
 

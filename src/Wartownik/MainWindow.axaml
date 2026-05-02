@@ -4,186 +4,581 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:Wartownik.ViewModels"
         xmlns:globalization="using:System.Globalization"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="560"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="680"
         x:Class="Wartownik.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding Localization[App.Title]}"
-        Width="800" Height="560"
-        MinWidth="560" MinHeight="400"
-        Background="Transparent"
-        TransparencyLevelHint="Mica,AcrylicBlur,Blur,None"
+        Width="1100" Height="680"
+        MinWidth="780" MinHeight="500"
+        Background="#0F172A"
+        TransparencyLevelHint="None"
+        WindowDecorations="None"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="32">
 
     <Grid RowDefinitions="32,*">
 
-        <!-- Custom title bar (drag area) -->
-        <Border Grid.Row="0"
-                Name="TitleBar"
-                Background="Transparent"
-                PointerPressed="OnTitleBarPointerPressed"
-                DoubleTapped="OnTitleBarDoubleTapped" />
-
-        <!-- ============================================================ -->
-        <!-- View 1: profile list (visible when not in details)            -->
-        <!-- ============================================================ -->
-        <Grid Grid.Row="1"
-              Margin="36,8,36,28"
-              RowDefinitions="Auto,Auto,Auto,*"
-              IsVisible="{Binding !IsViewingDetails}">
-
-            <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,16,0,0">
-                <TextBlock DockPanel.Dock="Left"
-                           Classes="h1"
-                           Text="{Binding Localization[App.Title]}" />
-                <ComboBox DockPanel.Dock="Right"
-                          ItemsSource="{Binding AvailableLanguages}"
-                          SelectedItem="{Binding SelectedLanguage}"
-                          Width="160"
-                          VerticalAlignment="Center">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate DataType="globalization:CultureInfo">
-                            <TextBlock Text="{Binding NativeName}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-            </DockPanel>
-
-            <DockPanel Grid.Row="1" LastChildFill="False" Margin="0,32,0,12">
-                <TextBlock DockPanel.Dock="Left"
-                           Classes="h2"
-                           VerticalAlignment="Center"
-                           Text="{Binding Localization[Profiles.Title]}" />
-                <Button DockPanel.Dock="Right"
-                        Classes="accent"
-                        Padding="16,8"
-                        Content="{Binding Localization[Profiles.AddNew]}"
-                        Command="{Binding AddProfileCommand}" />
-            </DockPanel>
-
-            <Border Grid.Row="2"
-                    Classes="card"
-                    Padding="20,32"
-                    IsVisible="{Binding !HasProfiles}">
-                <TextBlock Classes="subtle"
-                           HorizontalAlignment="Center"
-                           Text="{Binding Localization[Profiles.NoneYet]}" />
-            </Border>
-
-            <ListBox Grid.Row="3"
-                     Classes="cards"
-                     ItemsSource="{Binding Profiles}"
-                     IsVisible="{Binding HasProfiles}"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                <ListBox.ItemTemplate>
-                    <DataTemplate DataType="vm:ConnectionProfileItemViewModel">
-                        <Button Classes="card-button"
-                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenProfileCommand}"
-                                CommandParameter="{Binding}">
-                            <Border Classes="card">
-                                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                                    <StackPanel Grid.Column="0" Spacing="2">
-                                        <TextBlock Classes="h3" Text="{Binding DisplayName}" />
-                                        <TextBlock Classes="caption" Text="{Binding Endpoint}" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
-                                        <Button Classes="icon edit"
-                                                Content="&#x270E;"
-                                                ToolTip.Tip="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Localization[Profiles.Edit]}"
-                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).EditProfileCommand}"
-                                                CommandParameter="{Binding}" />
-                                        <Button Classes="icon danger"
-                                                Content="&#x2715;"
-                                                ToolTip.Tip="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Localization[Profiles.Delete]}"
-                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteProfileCommand}"
-                                                CommandParameter="{Binding}" />
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-                        </Button>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+        <!-- Custom title bar with our own caption buttons. -->
+        <Grid Grid.Row="0" Background="#0F172A" ColumnDefinitions="*,Auto">
+            <Border Grid.Column="0"
+                    Background="#0F172A"
+                    PointerPressed="OnTitleBarPointerPressed"
+                    DoubleTapped="OnTitleBarDoubleTapped" />
+            <StackPanel Grid.Column="1" Background="#0F172A" Orientation="Horizontal">
+                <Button Classes="caption"
+                        Content="&#xE921;"
+                        FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                        ToolTip.Tip="Minimize"
+                        Click="OnMinimizeClick" />
+                <Button Classes="caption"
+                        Content="&#xE922;"
+                        FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                        ToolTip.Tip="Maximize"
+                        Click="OnMaximizeClick" />
+                <Button Classes="caption close"
+                        Content="&#xE8BB;"
+                        FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                        ToolTip.Tip="Close"
+                        Click="OnCloseClick" />
+            </StackPanel>
         </Grid>
 
-        <!-- ============================================================ -->
-        <!-- View 2: profile details (visible when IsViewingDetails)       -->
-        <!-- ============================================================ -->
-        <ContentControl Grid.Row="1"
-                        IsVisible="{Binding IsViewingDetails}"
-                        Content="{Binding Details}">
-            <ContentControl.ContentTemplate>
-                <DataTemplate DataType="vm:ProfileDetailsViewModel">
-                    <Grid Margin="36,8,36,28" RowDefinitions="Auto,Auto,Auto,*">
+        <!-- Sidebar + content -->
+        <Grid Grid.Row="1" ColumnDefinitions="240,*">
 
-                        <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,16,0,0">
-                            <Button DockPanel.Dock="Left"
-                                    Content="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Localization[Common.Back]}"
-                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).BackToProfilesCommand}"
-                                    Padding="16,8"
-                                    VerticalAlignment="Center" />
-                        </DockPanel>
+            <!-- ============================================================ -->
+            <!-- Sidebar — hierarchical breadcrumb routing                     -->
+            <!-- ============================================================ -->
+            <Border Grid.Column="0" Classes="sidebar">
+                <Grid Margin="16,12,16,16" RowDefinitions="Auto,Auto,*,Auto">
 
-                        <StackPanel Grid.Row="1" Spacing="2" Margin="0,20,0,0">
-                            <TextBlock Classes="h1" Text="{Binding Profile.DisplayName}" />
-                            <TextBlock Classes="subtle" Text="{Binding Endpoint}" />
+                    <StackPanel Grid.Row="0"
+                                Orientation="Horizontal"
+                                Spacing="10"
+                                Margin="6,8,0,18"
+                                VerticalAlignment="Center">
+                        <Border Width="22" Height="22"
+                                CornerRadius="999"
+                                BorderBrush="#3B82F6"
+                                BorderThickness="2"
+                                VerticalAlignment="Center">
+                            <Ellipse Width="6" Height="6"
+                                     Fill="#3B82F6"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Classes="h2"
+                                   Text="{Binding Localization[App.Title]}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Spacing="2">
+                        <TextBlock Classes="eyebrow"
+                                   Text="Navigation"
+                                   Margin="6,0,0,8" />
+
+                        <!-- Level 1: Connection profiles (always visible) -->
+                        <Button Classes="nav"
+                                Classes.active="{Binding !IsViewingDetails}"
+                                Content="{Binding Localization[Profiles.Title]}"
+                                Command="{Binding BackToProfilesCommand}" />
+
+                        <!-- Level 2: profile name (visible when viewing details) -->
+                        <Button Classes="nav"
+                                Margin="14,0,0,0"
+                                Classes.active="{Binding IsAtProfileLevel}"
+                                Content="{Binding Details.Profile.DisplayName, FallbackValue=''}"
+                                Command="{Binding Details.BackToDatabasesCommand}"
+                                IsVisible="{Binding IsViewingDetails}" />
+
+                        <!-- Level 3: database name (visible when in database workspace) -->
+                        <Button Classes="nav"
+                                Margin="28,0,0,0"
+                                Classes.active="{Binding IsAtDatabaseLevel}"
+                                Content="{Binding Details.SelectedDatabase.DatabaseName, FallbackValue=''}"
+                                IsVisible="{Binding IsAtDatabaseLevel}" />
+                    </StackPanel>
+
+                    <!-- Spacer (Row 2: *) -->
+
+                    <StackPanel Grid.Row="3" Spacing="8">
+                        <TextBlock Classes="eyebrow"
+                                   Text="Language"
+                                   Margin="6,0,0,0" />
+                        <ComboBox ItemsSource="{Binding AvailableLanguages}"
+                                  SelectedItem="{Binding SelectedLanguage}"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate DataType="globalization:CultureInfo">
+                                    <TextBlock Text="{Binding NativeName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ============================================================ -->
+            <!-- Content area                                                  -->
+            <!-- ============================================================ -->
+            <Grid Grid.Column="1">
+
+                <!-- View 1: profile list -->
+                <Grid Margin="36,16,36,16"
+                      RowDefinitions="Auto,Auto,Auto,*,Auto"
+                      IsVisible="{Binding !IsViewingDetails}">
+
+                    <DockPanel Grid.Row="0" LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Left" Spacing="3">
+                            <TextBlock Classes="eyebrow"
+                                       Text="{Binding Localization[App.Title]}" />
+                            <TextBlock Classes="h1"
+                                       Text="{Binding Localization[Profiles.Title]}" />
+                            <TextBlock Classes="caption"
+                                       Text="{Binding ProfilesCountLabel}" />
                         </StackPanel>
+                        <Button DockPanel.Dock="Right"
+                                Classes="accent"
+                                Padding="18,9"
+                                VerticalAlignment="Center"
+                                Content="{Binding Localization[Profiles.AddNew]}"
+                                Command="{Binding AddProfileCommand}" />
+                    </DockPanel>
 
-                        <TextBlock Grid.Row="2"
-                                   Classes="h2"
-                                   Text="{Binding Localization[Databases.Title]}"
-                                   Margin="0,28,0,12" />
+                    <TextBox Grid.Row="1"
+                             Classes="search"
+                             Margin="0,16,0,0"
+                             PlaceholderText="{Binding Localization[Profiles.SearchPlaceholder]}"
+                             Text="{Binding SearchFilter}" />
 
-                        <Grid Grid.Row="3">
-                            <Border Classes="card"
-                                    Padding="20,32"
-                                    IsVisible="{Binding IsLoading}">
-                                <TextBlock Classes="subtle"
-                                           HorizontalAlignment="Center"
-                                           Text="{Binding Localization[Common.Loading]}" />
-                            </Border>
+                    <Border Grid.Row="2"
+                            Classes="card"
+                            Padding="20,32"
+                            Margin="0,16,0,0"
+                            IsVisible="{Binding !HasProfiles}">
+                        <TextBlock Classes="subtle"
+                                   HorizontalAlignment="Center"
+                                   Text="{Binding Localization[Profiles.NoneYet]}" />
+                    </Border>
 
-                            <Border Padding="12,10"
-                                    CornerRadius="6"
-                                    Background="#1AE53935"
-                                    BorderBrush="#88E53935"
-                                    BorderThickness="1"
-                                    VerticalAlignment="Top"
-                                    IsVisible="{Binding HasError}">
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="{Binding Localization[Databases.LoadFailed]}"
-                                               Foreground="#FFE53935"
-                                               FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding ErrorMessage}"
-                                               Foreground="#FFE53935"
-                                               TextWrapping="Wrap" />
+                    <ListBox Grid.Row="3"
+                             Classes="cards"
+                             Margin="0,16,0,0"
+                             ItemsSource="{Binding Profiles}"
+                             IsVisible="{Binding HasProfiles}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="vm:ConnectionProfileItemViewModel">
+                                <Button Classes="card-button"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenProfileCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Border Classes="card">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
+                                            <!-- Avatar with subtle gradient (brush built in VM) -->
+                                            <Border Grid.Column="0"
+                                                    Classes="avatar"
+                                                    Background="{Binding AvatarBrush}">
+                                                <TextBlock Text="{Binding Initials}" />
+                                            </Border>
+
+                                            <!-- Name + endpoint + status -->
+                                            <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="3">
+                                                <TextBlock Classes="h3"
+                                                           Foreground="#F3F4F6"
+                                                           Text="{Binding DisplayName}" />
+                                                <TextBlock Classes="caption"
+                                                           Foreground="#94A3B8"
+                                                           Text="{Binding Endpoint}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,4,0,0">
+                                                    <Border Classes="pill success" IsVisible="{Binding IsConnected}">
+                                                        <TextBlock Text="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).Localization[Status.Connected]}" />
+                                                    </Border>
+                                                    <Border Classes="pill danger" IsVisible="{Binding IsDisconnected}">
+                                                        <TextBlock Text="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).Localization[Status.Disconnected]}" />
+                                                    </Border>
+                                                    <Border Classes="pill" IsVisible="{Binding IsChecking}">
+                                                        <TextBlock Text="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).Localization[Status.Checking]}" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <!-- Counter + inline actions -->
+                                            <StackPanel Grid.Column="2"
+                                                        HorizontalAlignment="Right"
+                                                        VerticalAlignment="Center"
+                                                        Spacing="6">
+                                                <TextBlock Classes="caption"
+                                                           Foreground="#94A3B8"
+                                                           HorizontalAlignment="Right"
+                                                           Text="{Binding CountersText}"
+                                                           IsVisible="{Binding HasCounters}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                                                    <Button Classes="icon edit"
+                                                            Content="&#x270E;"
+                                                            Foreground="#94A3B8"
+                                                            ToolTip.Tip="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).Localization[Profiles.Edit]}"
+                                                            Command="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).EditProfileCommand}"
+                                                            CommandParameter="{Binding}" />
+                                                    <Button Classes="icon danger"
+                                                            Content="&#x2715;"
+                                                            Foreground="#94A3B8"
+                                                            ToolTip.Tip="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).Localization[Profiles.Delete]}"
+                                                            Command="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).DeleteProfileCommand}"
+                                                            CommandParameter="{Binding}" />
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <!-- Chevron -->
+                                            <TextBlock Grid.Column="3"
+                                                       Text="&#x276F;"
+                                                       Margin="14,0,0,0"
+                                                       FontSize="14"
+                                                       Foreground="#64748B"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </Button>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <TextBlock Grid.Row="4"
+                               Classes="caption"
+                               HorizontalAlignment="Center"
+                               Margin="0,16,0,0"
+                               Text="{Binding Localization[Profiles.TipImport]}" />
+                </Grid>
+
+                <!-- View 2: profile details -->
+                <ContentControl IsVisible="{Binding IsViewingDetails}"
+                                Content="{Binding Details}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate DataType="vm:ProfileDetailsViewModel">
+                            <Grid>
+
+                                <!-- ============================================ -->
+                                <!-- Profile workspace (DBs + Roles)               -->
+                                <!-- ============================================ -->
+                                <Grid Margin="36,16,36,28"
+                                      RowDefinitions="Auto,*"
+                                      IsVisible="{Binding !IsViewingDatabase}">
+
+                                <StackPanel Grid.Row="0" Spacing="3">
+                                    <TextBlock Classes="eyebrow"
+                                               Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Localization[Profiles.Title]}" />
+                                    <TextBlock Classes="h1" Text="{Binding Profile.DisplayName}" />
+                                    <TextBlock Classes="subtle" Text="{Binding Endpoint}" />
                                 </StackPanel>
-                            </Border>
 
-                            <Border Classes="card"
-                                    Padding="20,32"
-                                    IsVisible="{Binding IsEmpty}">
-                                <TextBlock Classes="subtle"
-                                           HorizontalAlignment="Center"
-                                           Text="{Binding Localization[Databases.Empty]}" />
-                            </Border>
+                                <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*" Margin="0,24,0,0">
 
-                            <ListBox Classes="cards"
-                                     ItemsSource="{Binding Databases}"
-                                     IsVisible="{Binding HasDatabases}"
-                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate DataType="vm:DatabaseItemViewModel">
-                                        <Border Classes="card">
-                                            <TextBlock Classes="h3" Text="{Binding Name}" />
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Grid>
-                    </Grid>
-                </DataTemplate>
-            </ContentControl.ContentTemplate>
-        </ContentControl>
+                                    <Border Grid.Row="0"
+                                            Classes="card"
+                                            Padding="20,32"
+                                            IsVisible="{Binding IsLoading}">
+                                        <TextBlock Classes="subtle"
+                                                   HorizontalAlignment="Center"
+                                                   Text="{Binding Localization[Common.Loading]}" />
+                                    </Border>
+
+                                    <Border Grid.Row="1"
+                                            Padding="14,12"
+                                            Margin="0,0,0,16"
+                                            CornerRadius="8"
+                                            Background="#1AE53935"
+                                            BorderBrush="#88E53935"
+                                            BorderThickness="1"
+                                            IsVisible="{Binding HasError}">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="{Binding Localization[Databases.LoadFailed]}"
+                                                       Foreground="#FFE53935"
+                                                       FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding ErrorMessage}"
+                                                       Foreground="#FFE53935"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <TabControl Grid.Row="2" IsVisible="{Binding IsContentVisible}">
+
+                                        <!-- ============ Databases tab ============ -->
+                                        <TabItem>
+                                            <TabItem.Header>
+                                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Localization[Databases.Title]}"
+                                                               VerticalAlignment="Center" />
+                                                    <Border Classes="badge">
+                                                        <TextBlock Text="{Binding Databases.Count}" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </TabItem.Header>
+
+                                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" Padding="0,16,0,0">
+                                                <StackPanel Spacing="12">
+                                                    <Border Classes="card"
+                                                            Padding="20,28"
+                                                            IsVisible="{Binding IsDatabasesEmpty}">
+                                                        <TextBlock Classes="subtle"
+                                                                   HorizontalAlignment="Center"
+                                                                   Text="{Binding Localization[Databases.Empty]}" />
+                                                    </Border>
+
+                                                    <ItemsControl ItemsSource="{Binding Databases}"
+                                                                  IsVisible="{Binding HasDatabases}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="vm:DatabaseItemViewModel">
+                                                                <Button Classes="card-button"
+                                                                        Margin="0,0,0,10"
+                                                                        Command="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).OpenDatabaseCommand}"
+                                                                        CommandParameter="{Binding}">
+                                                                    <Border Classes="card">
+                                                                        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                                                            <TextBlock Grid.Column="0" Classes="h3" Text="{Binding Name}" />
+                                                                            <TextBlock Grid.Column="1"
+                                                                                       Text="&#x276F;"
+                                                                                       FontSize="14"
+                                                                                       Opacity="0.5"
+                                                                                       VerticalAlignment="Center" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </Button>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </ScrollViewer>
+                                        </TabItem>
+
+                                        <!-- ============ Users tab (login roles) ============ -->
+                                        <TabItem>
+                                            <TabItem.Header>
+                                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Localization[Users.Title]}"
+                                                               VerticalAlignment="Center" />
+                                                    <Border Classes="badge">
+                                                        <TextBlock Text="{Binding Users.Count}" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </TabItem.Header>
+
+                                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" Padding="0,16,0,0">
+                                                <StackPanel Spacing="12">
+                                                    <DockPanel LastChildFill="False">
+                                                        <Button DockPanel.Dock="Right"
+                                                                Classes="accent"
+                                                                Padding="14,6"
+                                                                Content="{Binding Localization[Users.AddNew]}"
+                                                                Command="{Binding AddUserCommand}" />
+                                                    </DockPanel>
+
+                                                    <Border Classes="card"
+                                                            Padding="20,28"
+                                                            IsVisible="{Binding IsUsersEmpty}">
+                                                        <TextBlock Classes="subtle"
+                                                                   HorizontalAlignment="Center"
+                                                                   Text="{Binding Localization[Users.Empty]}" />
+                                                    </Border>
+
+                                                    <ItemsControl ItemsSource="{Binding Users}"
+                                                                  IsVisible="{Binding HasUsers}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="vm:RoleItemViewModel">
+                                                                <Border Classes="card" Margin="0,0,0,10">
+                                                                    <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                                                        <StackPanel Grid.Column="0" Spacing="6">
+                                                                            <TextBlock Classes="h3" Text="{Binding Name}" />
+                                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                                <Border Classes="pill warn"
+                                                                                        IsVisible="{Binding IsSuperuser}">
+                                                                                    <TextBlock Text="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.Superuser]}" />
+                                                                                </Border>
+                                                                                <Border Classes="pill accent">
+                                                                                    <TextBlock Text="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.CanLogin]}" />
+                                                                                </Border>
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                                            <Button Classes="icon edit"
+                                                                                    Content="&#x270E;"
+                                                                                    ToolTip.Tip="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.Edit]}"
+                                                                                    Command="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).EditRoleCommand}"
+                                                                                    CommandParameter="{Binding}" />
+                                                                            <Button Classes="icon danger"
+                                                                                    Content="&#x2715;"
+                                                                                    ToolTip.Tip="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.Drop]}"
+                                                                                    Command="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).DropRoleCommand}"
+                                                                                    CommandParameter="{Binding}" />
+                                                                        </StackPanel>
+                                                                    </Grid>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </ScrollViewer>
+                                        </TabItem>
+
+                                        <!-- ============ Roles tab (groups, no-login) ============ -->
+                                        <TabItem>
+                                            <TabItem.Header>
+                                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Localization[Roles.Title]}"
+                                                               VerticalAlignment="Center" />
+                                                    <Border Classes="badge">
+                                                        <TextBlock Text="{Binding Roles.Count}" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </TabItem.Header>
+
+                                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" Padding="0,16,0,0">
+                                                <StackPanel Spacing="12">
+                                                    <DockPanel LastChildFill="False">
+                                                        <Button DockPanel.Dock="Right"
+                                                                Classes="accent"
+                                                                Padding="14,6"
+                                                                Content="{Binding Localization[Roles.AddNew]}"
+                                                                Command="{Binding AddRoleCommand}" />
+                                                    </DockPanel>
+
+                                                    <Border Classes="card"
+                                                            Padding="20,28"
+                                                            IsVisible="{Binding IsRolesEmpty}">
+                                                        <TextBlock Classes="subtle"
+                                                                   HorizontalAlignment="Center"
+                                                                   Text="{Binding Localization[Roles.Empty]}" />
+                                                    </Border>
+
+                                                    <ItemsControl ItemsSource="{Binding Roles}"
+                                                                  IsVisible="{Binding HasRoles}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="vm:RoleItemViewModel">
+                                                                <Border Classes="card" Margin="0,0,0,10">
+                                                                    <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                                                        <StackPanel Grid.Column="0" Spacing="6">
+                                                                            <TextBlock Classes="h3" Text="{Binding Name}" />
+                                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                                <Border Classes="pill warn"
+                                                                                        IsVisible="{Binding IsSuperuser}">
+                                                                                    <TextBlock Text="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.Superuser]}" />
+                                                                                </Border>
+                                                                                <Border Classes="pill">
+                                                                                    <TextBlock Text="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.NoLogin]}" />
+                                                                                </Border>
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                                            <Button Classes="icon edit"
+                                                                                    Content="&#x270E;"
+                                                                                    ToolTip.Tip="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.Edit]}"
+                                                                                    Command="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).EditRoleCommand}"
+                                                                                    CommandParameter="{Binding}" />
+                                                                            <Button Classes="icon danger"
+                                                                                    Content="&#x2715;"
+                                                                                    ToolTip.Tip="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.Drop]}"
+                                                                                    Command="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).DropRoleCommand}"
+                                                                                    CommandParameter="{Binding}" />
+                                                                        </StackPanel>
+                                                                    </Grid>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </ScrollViewer>
+                                        </TabItem>
+
+                                        <!-- ============ Settings tab ============ -->
+                                        <TabItem Header="{Binding Localization[Profiles.SettingsTab]}">
+                                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" Padding="0,16,0,0">
+                                                <Border Classes="card" Padding="20,28">
+                                                    <TextBlock Classes="subtle"
+                                                               HorizontalAlignment="Center"
+                                                               TextWrapping="Wrap"
+                                                               Text="{Binding Localization[Profiles.SettingsComingSoon]}" />
+                                                </Border>
+                                            </ScrollViewer>
+                                        </TabItem>
+                                    </TabControl>
+                                </Grid>
+                                </Grid>
+
+                                <!-- ============================================ -->
+                                <!-- Database workspace                            -->
+                                <!-- ============================================ -->
+                                <ContentControl IsVisible="{Binding IsViewingDatabase}"
+                                                Content="{Binding SelectedDatabase}">
+                                    <ContentControl.ContentTemplate>
+                                        <DataTemplate DataType="vm:DatabaseDetailsViewModel">
+                                            <Grid Margin="36,16,36,28" RowDefinitions="Auto,*">
+
+                                                <StackPanel Grid.Row="0" Spacing="3">
+                                                    <TextBlock Classes="eyebrow"
+                                                               Text="{Binding Localization[Databases.Title]}" />
+                                                    <TextBlock Classes="h1" Text="{Binding DatabaseName}" />
+                                                    <TextBlock Classes="subtle" Text="{Binding Endpoint}" />
+                                                </StackPanel>
+
+                                                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" Margin="0,24,0,0">
+                                                    <StackPanel Spacing="20">
+
+                                                        <Border Classes="card"
+                                                                Padding="20,32"
+                                                                IsVisible="{Binding IsLoading}">
+                                                            <TextBlock Classes="subtle"
+                                                                       HorizontalAlignment="Center"
+                                                                       Text="{Binding Localization[Common.Loading]}" />
+                                                        </Border>
+
+                                                        <Border Padding="14,12"
+                                                                CornerRadius="8"
+                                                                Background="#1AE53935"
+                                                                BorderBrush="#88E53935"
+                                                                BorderThickness="1"
+                                                                IsVisible="{Binding HasError}">
+                                                            <StackPanel Spacing="2">
+                                                                <TextBlock Text="{Binding Localization[Schemas.LoadFailed]}"
+                                                                           Foreground="#FFE53935"
+                                                                           FontWeight="SemiBold" />
+                                                                <TextBlock Text="{Binding ErrorMessage}"
+                                                                           Foreground="#FFE53935"
+                                                                           TextWrapping="Wrap" />
+                                                            </StackPanel>
+                                                        </Border>
+
+                                                        <StackPanel Spacing="12" IsVisible="{Binding IsContentVisible}">
+                                                            <TextBlock Classes="h2"
+                                                                       Text="{Binding Localization[Schemas.Title]}" />
+
+                                                            <Border Classes="card"
+                                                                    Padding="20,28"
+                                                                    IsVisible="{Binding IsSchemasEmpty}">
+                                                                <TextBlock Classes="subtle"
+                                                                           HorizontalAlignment="Center"
+                                                                           Text="{Binding Localization[Schemas.Empty]}" />
+                                                            </Border>
+
+                                                            <ItemsControl ItemsSource="{Binding Schemas}"
+                                                                          IsVisible="{Binding HasSchemas}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="vm:SchemaItemViewModel">
+                                                                        <Border Classes="card" Margin="0,0,0,10">
+                                                                            <TextBlock Classes="h3" Text="{Binding Name}" />
+                                                                        </Border>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </ScrollViewer>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ContentControl.ContentTemplate>
+                                </ContentControl>
+                            </Grid>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+            </Grid>
+        </Grid>
     </Grid>
 </Window>

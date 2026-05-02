@@ -76,6 +76,51 @@
   <data name="Profiles.NoneYet" xml:space="preserve">
     <value>No profiles yet.</value>
   </data>
+  <data name="Profiles.SearchPlaceholder" xml:space="preserve">
+    <value>Search profiles by name, host, or database…</value>
+  </data>
+  <data name="Profiles.CountConfigured" xml:space="preserve">
+    <value>{0} profiles configured</value>
+  </data>
+  <data name="Profiles.CountConfiguredOne" xml:space="preserve">
+    <value>1 profile configured</value>
+  </data>
+  <data name="Profiles.CountConfiguredZero" xml:space="preserve">
+    <value>No profiles configured yet</value>
+  </data>
+  <data name="Profiles.NoSearchResults" xml:space="preserve">
+    <value>No profiles match your search.</value>
+  </data>
+  <data name="Profiles.TipImport" xml:space="preserve">
+    <value>Tip · Drag a connection JSON file anywhere on this window to import it.</value>
+  </data>
+  <data name="Profiles.SettingsTab" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Profiles.SettingsComingSoon" xml:space="preserve">
+    <value>Profile settings (notifications, defaults, audit retention) — coming soon.</value>
+  </data>
+  <data name="Profiles.TipRolesTab" xml:space="preserve">
+    <value>Tip · Use Users for login roles and Roles for groups (no-login).</value>
+  </data>
+  <data name="Users.Title" xml:space="preserve">
+    <value>Users</value>
+  </data>
+  <data name="Users.Empty" xml:space="preserve">
+    <value>No login roles visible to this user.</value>
+  </data>
+  <data name="Users.AddNew" xml:space="preserve">
+    <value>Add user</value>
+  </data>
+  <data name="Status.Connected" xml:space="preserve">
+    <value>connected</value>
+  </data>
+  <data name="Status.Disconnected" xml:space="preserve">
+    <value>disconnected</value>
+  </data>
+  <data name="Status.Checking" xml:space="preserve">
+    <value>checking…</value>
+  </data>
   <data name="Profiles.Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
@@ -150,5 +195,80 @@
   </data>
   <data name="Databases.LoadFailed" xml:space="preserve">
     <value>Failed to load databases:</value>
+  </data>
+  <data name="Schemas.Title" xml:space="preserve">
+    <value>Schemas</value>
+  </data>
+  <data name="Schemas.Empty" xml:space="preserve">
+    <value>No user-defined schemas in this database.</value>
+  </data>
+  <data name="Schemas.LoadFailed" xml:space="preserve">
+    <value>Failed to load schemas:</value>
+  </data>
+  <data name="Roles.Title" xml:space="preserve">
+    <value>Roles</value>
+  </data>
+  <data name="Roles.Empty" xml:space="preserve">
+    <value>No roles visible to this user.</value>
+  </data>
+  <data name="Roles.LoadFailed" xml:space="preserve">
+    <value>Failed to load roles:</value>
+  </data>
+  <data name="Roles.Superuser" xml:space="preserve">
+    <value>superuser</value>
+  </data>
+  <data name="Roles.CanLogin" xml:space="preserve">
+    <value>login</value>
+  </data>
+  <data name="Roles.NoLogin" xml:space="preserve">
+    <value>group</value>
+  </data>
+  <data name="Roles.AddNew" xml:space="preserve">
+    <value>Add role</value>
+  </data>
+  <data name="Roles.CreateFailed" xml:space="preserve">
+    <value>Failed to create role:</value>
+  </data>
+  <data name="Role.New" xml:space="preserve">
+    <value>New role</value>
+  </data>
+  <data name="Role.Edit" xml:space="preserve">
+    <value>Edit role</value>
+  </data>
+  <data name="Roles.Edit" xml:space="preserve">
+    <value>Edit role</value>
+  </data>
+  <data name="Roles.AlterFailed" xml:space="preserve">
+    <value>Failed to alter role:</value>
+  </data>
+  <data name="Role.Name" xml:space="preserve">
+    <value>Role name</value>
+  </data>
+  <data name="Role.CanLogin" xml:space="preserve">
+    <value>Allow login</value>
+  </data>
+  <data name="Role.Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Role.IsSuperuser" xml:space="preserve">
+    <value>Superuser</value>
+  </data>
+  <data name="Role.CanCreateDb" xml:space="preserve">
+    <value>Can create databases</value>
+  </data>
+  <data name="Role.CanCreateRole" xml:space="preserve">
+    <value>Can create roles</value>
+  </data>
+  <data name="Roles.Drop" xml:space="preserve">
+    <value>Drop role</value>
+  </data>
+  <data name="Roles.DropConfirmTitle" xml:space="preserve">
+    <value>Drop role?</value>
+  </data>
+  <data name="Roles.DropConfirmMessage" xml:space="preserve">
+    <value>Drop role "{0}"? This cannot be undone. Postgres will refuse if the role owns objects.</value>
+  </data>
+  <data name="Roles.DropFailed" xml:space="preserve">
+    <value>Failed to drop role:</value>
   </data>
 </root>

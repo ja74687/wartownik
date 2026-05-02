@@ -9,12 +9,18 @@ namespace Wartownik.ViewModels;
 
 public sealed class MainWindowViewModel : ViewModelBase
 {
+    public delegate ProfileDetailsViewModel ProfileDetailsFactory(ConnectionProfile profile);
+
     private readonly IConnectionProfileService _profiles;
     private readonly IConnectionProfileEditor _editor;
     private readonly IConfirmationDialog _confirmation;
+    private readonly IConnectionTester _tester;
     private readonly IPostgresMetadataService _metadata;
+    private readonly ProfileDetailsFactory _detailsFactory;
 
+    private readonly List<ConnectionProfileItemViewModel> _allProfiles = new();
     private ProfileDetailsViewModel? _details;
+    private string _searchFilter = "";
 
     public ILocalizationService Localization { get; }
 
@@ -32,19 +38,25 @@ public sealed class MainWindowViewModel : ViewModelBase
         IConnectionProfileService profiles,
         IConnectionProfileEditor editor,
         IConfirmationDialog confirmation,
-        IPostgresMetadataService metadata)
+        IConnectionTester tester,
+        IPostgresMetadataService metadata,
+        ProfileDetailsFactory detailsFactory)
     {
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(profiles);
         ArgumentNullException.ThrowIfNull(editor);
         ArgumentNullException.ThrowIfNull(confirmation);
+        ArgumentNullException.ThrowIfNull(tester);
         ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentNullException.ThrowIfNull(detailsFactory);
 
         Localization = localization;
         _profiles = profiles;
         _editor = editor;
         _confirmation = confirmation;
+        _tester = tester;
         _metadata = metadata;
+        _detailsFactory = detailsFactory;
 
         AddProfileCommand = new AsyncRelayCommand(AddProfileAsync);
         EditProfileCommand = new AsyncRelayCommand(parameter => EditProfileAsync(parameter));
@@ -61,12 +73,35 @@ public sealed class MainWindowViewModel : ViewModelBase
         get => _details;
         private set
         {
+            if (_details is not null)
+                _details.PropertyChanged -= OnDetailsPropertyChanged;
             if (SetField(ref _details, value))
+            {
                 RaisePropertyChanged(nameof(IsViewingDetails));
+                RaisePropertyChanged(nameof(IsAtProfileLevel));
+                RaisePropertyChanged(nameof(IsAtDatabaseLevel));
+                if (_details is not null)
+                    _details.PropertyChanged += OnDetailsPropertyChanged;
+            }
         }
     }
 
     public bool IsViewingDetails => _details is not null;
+
+    public bool IsAtProfileLevel =>
+        _details is not null && !_details.IsViewingDatabase;
+
+    public bool IsAtDatabaseLevel =>
+        _details is not null && _details.IsViewingDatabase;
+
+    private void OnDetailsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ProfileDetailsViewModel.IsViewingDatabase))
+        {
+            RaisePropertyChanged(nameof(IsAtProfileLevel));
+            RaisePropertyChanged(nameof(IsAtDatabaseLevel));
+        }
+    }
 
     public IReadOnlyList<CultureInfo> AvailableLanguages => Localization.AvailableLanguages;
 
@@ -84,13 +119,89 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public bool HasProfiles => Profiles.Count > 0;
 
+    public int TotalProfileCount => _allProfiles.Count;
+
+    public string ProfilesCountLabel =>
+        _allProfiles.Count switch
+        {
+            0 => Localization["Profiles.CountConfiguredZero"],
+            1 => Localization["Profiles.CountConfiguredOne"],
+            _ => string.Format(Localization["Profiles.CountConfigured"], _allProfiles.Count),
+        };
+
+    public string SearchFilter
+    {
+        get => _searchFilter;
+        set
+        {
+            if (SetField(ref _searchFilter, value ?? ""))
+                ApplyFilter();
+        }
+    }
+
     public async Task LoadProfilesAsync()
     {
         var loaded = await _profiles.ListAsync().ConfigureAwait(true);
-        Profiles.Clear();
+        _allProfiles.Clear();
         foreach (var profile in loaded)
-            Profiles.Add(new ConnectionProfileItemViewModel(profile));
+            _allProfiles.Add(new ConnectionProfileItemViewModel(profile));
+        ApplyFilter();
+        RaisePropertyChanged(nameof(TotalProfileCount));
+        RaisePropertyChanged(nameof(ProfilesCountLabel));
+
+        // Background refresh of status + counters per profile (fire-and-forget).
+        foreach (var item in _allProfiles)
+            _ = RefreshProfileMetaAsync(item);
+    }
+
+    private void ApplyFilter()
+    {
+        Profiles.Clear();
+        var query = _searchFilter.Trim();
+        foreach (var item in _allProfiles)
+        {
+            if (query.Length == 0 ||
+                item.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                item.Endpoint.Contains(query, StringComparison.OrdinalIgnoreCase))
+            {
+                Profiles.Add(item);
+            }
+        }
         RaisePropertyChanged(nameof(HasProfiles));
+    }
+
+    private async Task RefreshProfileMetaAsync(ConnectionProfileItemViewModel item)
+    {
+        item.Status = ConnectionStatus.Checking;
+        try
+        {
+            var password = await _profiles.GetPasswordAsync(item.Id).ConfigureAwait(true) ?? "";
+            var test = await _tester.TestAsync(item.Profile, password).ConfigureAwait(true);
+
+            if (!test.Success)
+            {
+                item.Status = ConnectionStatus.Disconnected;
+                return;
+            }
+
+            item.Status = ConnectionStatus.Connected;
+
+            try
+            {
+                var dbs = await _metadata.ListDatabasesAsync(item.Profile, password).ConfigureAwait(true);
+                var roles = await _metadata.ListRolesAsync(item.Profile, password).ConfigureAwait(true);
+                item.DatabaseCount = dbs.Count;
+                item.UserCount = roles.Count(r => r.CanLogin);
+            }
+            catch
+            {
+                // Connection works but metadata read failed (permissions?). Leave counters empty.
+            }
+        }
+        catch
+        {
+            item.Status = ConnectionStatus.Disconnected;
+        }
     }
 
     private async Task AddProfileAsync()
@@ -108,7 +219,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         if (parameter is not ConnectionProfileItemViewModel item)
             return;
 
-        var details = new ProfileDetailsViewModel(item.Profile, Localization, _profiles, _metadata);
+        var details = _detailsFactory(item.Profile);
         Details = details;
         await details.LoadAsync().ConfigureAwait(true);
     }
@@ -156,5 +267,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         if (e.PropertyName == nameof(ILocalizationService.CurrentLanguage))
             RaisePropertyChanged(nameof(SelectedLanguage));
+        if (e.PropertyName == "Item[]")
+            RaisePropertyChanged(nameof(ProfilesCountLabel));
     }
 }

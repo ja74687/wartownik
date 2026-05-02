@@ -28,7 +28,19 @@ public class MainWindowViewModelTests
         var editor = new FakeEditor();
         var confirmation = new FakeConfirmationDialog { NextResult = defaultConfirm };
         var meta = metadata ?? new FakeMetadataService();
-        return (new MainWindowViewModel(loc, profiles, editor, confirmation, meta), loc, profiles, editor, confirmation);
+        var roleAdmin = new FakeRoleAdminService();
+        var roleEditor = new FakeRoleEditor();
+
+        ProfileDetailsViewModel.DatabaseDetailsFactory dbFactory = (p, db) =>
+            new DatabaseDetailsViewModel(p, db, loc, profiles, meta);
+
+        MainWindowViewModel.ProfileDetailsFactory factory = profile =>
+            new ProfileDetailsViewModel(profile, loc, profiles, meta, roleAdmin, roleEditor, confirmation, dbFactory);
+
+        var tester = new FakeConnectionTester();
+
+        return (new MainWindowViewModel(loc, profiles, editor, confirmation, tester, meta, factory),
+            loc, profiles, editor, confirmation);
     }
 
     private static ConnectionProfile SampleProfile(string name = "Sample") =>
@@ -292,23 +304,66 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task SearchFilter_filters_profiles_by_display_name_or_endpoint()
+    {
+        var (vm, _, profiles, _, _) = Build();
+        profiles.Items.Add(SampleProfile("Local dev"));
+        profiles.Items.Add(SampleProfile("Production"));
+        profiles.Items.Add(SampleProfile("Staging"));
+        await vm.LoadProfilesAsync();
+        Assert.Equal(3, vm.Profiles.Count);
+
+        vm.SearchFilter = "prod";
+
+        Assert.Single(vm.Profiles);
+        Assert.Equal("Production", vm.Profiles[0].DisplayName);
+
+        vm.SearchFilter = "";
+        Assert.Equal(3, vm.Profiles.Count);
+    }
+
+    [Fact]
+    public async Task LoadProfilesAsync_kicks_off_meta_refresh_per_item()
+    {
+        var (vm, _, profiles, _, _) = Build();
+        profiles.Items.Add(SampleProfile("A"));
+
+        await vm.LoadProfilesAsync();
+
+        // Background refresh is fire-and-forget; allow it to complete.
+        await Task.Delay(50);
+        Assert.NotEqual(ConnectionStatus.Unknown, vm.Profiles[0].Status);
+    }
+
+    [Fact]
     public void Constructor_throws_on_null_arguments()
     {
         var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
         var profiles = new FakeProfileService();
         var editor = new FakeEditor();
         var confirmation = new FakeConfirmationDialog();
+        var tester = new FakeConnectionTester();
         var meta = new FakeMetadataService();
+        ProfileDetailsViewModel.DatabaseDetailsFactory dbFactory = (p, db) =>
+            new DatabaseDetailsViewModel(p, db, loc, profiles, meta);
+        MainWindowViewModel.ProfileDetailsFactory factory = profile =>
+            new ProfileDetailsViewModel(profile, loc, profiles, meta,
+                new FakeRoleAdminService(), new FakeRoleEditor(), confirmation, dbFactory);
+
         Assert.Throws<ArgumentNullException>(() =>
-            new MainWindowViewModel(null!, profiles, editor, confirmation, meta));
+            new MainWindowViewModel(null!, profiles, editor, confirmation, tester, meta, factory));
         Assert.Throws<ArgumentNullException>(() =>
-            new MainWindowViewModel(loc, null!, editor, confirmation, meta));
+            new MainWindowViewModel(loc, null!, editor, confirmation, tester, meta, factory));
         Assert.Throws<ArgumentNullException>(() =>
-            new MainWindowViewModel(loc, profiles, null!, confirmation, meta));
+            new MainWindowViewModel(loc, profiles, null!, confirmation, tester, meta, factory));
         Assert.Throws<ArgumentNullException>(() =>
-            new MainWindowViewModel(loc, profiles, editor, null!, meta));
+            new MainWindowViewModel(loc, profiles, editor, null!, tester, meta, factory));
         Assert.Throws<ArgumentNullException>(() =>
-            new MainWindowViewModel(loc, profiles, editor, confirmation, null!));
+            new MainWindowViewModel(loc, profiles, editor, confirmation, null!, meta, factory));
+        Assert.Throws<ArgumentNullException>(() =>
+            new MainWindowViewModel(loc, profiles, editor, confirmation, tester, null!, factory));
+        Assert.Throws<ArgumentNullException>(() =>
+            new MainWindowViewModel(loc, profiles, editor, confirmation, tester, meta, null!));
     }
 
     private sealed class EmptyResources : IStringResources
@@ -393,5 +448,62 @@ public class MainWindowViewModelTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<DatabaseSummary>>(
                 _names.Select(n => new DatabaseSummary(n)).ToList());
+
+        public Task<IReadOnlyList<RoleSummary>> ListRolesAsync(
+            ConnectionProfile profile,
+            string password,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<RoleSummary>>(Array.Empty<RoleSummary>());
+
+        public Task<IReadOnlyList<SchemaSummary>> ListSchemasAsync(
+            ConnectionProfile profile,
+            string password,
+            string databaseName,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SchemaSummary>>(Array.Empty<SchemaSummary>());
+    }
+
+    private sealed class FakeConnectionTester : IConnectionTester
+    {
+        public ConnectionTestResult NextResult { get; set; } = ConnectionTestResult.Ok();
+
+        public Task<ConnectionTestResult> TestAsync(
+            ConnectionProfile profile,
+            string password,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(NextResult);
+    }
+
+    private sealed class FakeRoleAdminService : IPostgresRoleAdminService
+    {
+        public Task CreateRoleAsync(
+            ConnectionProfile profile,
+            string profilePassword,
+            CreateRoleRequest request,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task AlterRoleAsync(
+            ConnectionProfile profile,
+            string profilePassword,
+            AlterRoleRequest request,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task DropRoleAsync(
+            ConnectionProfile profile,
+            string profilePassword,
+            string roleName,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class FakeRoleEditor : IRoleEditor
+    {
+        public Task<CreateRoleRequest?> CreateAsync(bool canLoginDefault = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<CreateRoleRequest?>(null);
+
+        public Task<AlterRoleRequest?> EditAsync(RoleSummary current, CancellationToken cancellationToken = default) =>
+            Task.FromResult<AlterRoleRequest?>(null);
     }
 }

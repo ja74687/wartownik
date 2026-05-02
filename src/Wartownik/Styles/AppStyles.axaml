@@ -1,45 +1,114 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Typography -->
+    <!-- Force the entire window template (including any chrome/title area
+         drawn by Semi.Avalonia) to use slate-900 — eliminates the lighter
+         "title bar" panel that otherwise sits behind our custom caption row. -->
+    <Style Selector="Window">
+        <Setter Property="Background" Value="#0F172A" />
+    </Style>
+    <Style Selector="Window /template/ Panel">
+        <Setter Property="Background" Value="#0F172A" />
+    </Style>
+    <Style Selector="Window /template/ Border">
+        <Setter Property="Background" Value="#0F172A" />
+    </Style>
+
+    <!-- Typography. Hardcoded colors (dark-mode tuned) — Semi.Avalonia
+         resource keys aren't reliably available, and inheritance from a
+         primary-tinted Button parent (e.g. card-button) would otherwise
+         turn body text accent-blue. -->
     <Style Selector="TextBlock.h1">
-        <Setter Property="FontSize" Value="32" />
+        <Setter Property="FontSize" Value="28" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="LineHeight" Value="40" />
+        <Setter Property="LineHeight" Value="36" />
+        <Setter Property="Foreground" Value="#F3F4F6" />
     </Style>
     <Style Selector="TextBlock.h2">
-        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontSize" Value="18" />
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="#F3F4F6" />
     </Style>
     <Style Selector="TextBlock.h3">
         <Setter Property="FontSize" Value="14" />
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="#F3F4F6" />
+    </Style>
+    <Style Selector="TextBlock.eyebrow">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LetterSpacing" Value="0.6" />
+        <Setter Property="Foreground" Value="#9CA3AF" />
     </Style>
     <Style Selector="TextBlock.caption">
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="Opacity" Value="0.6" />
+        <Setter Property="Foreground" Value="#9CA3AF" />
     </Style>
     <Style Selector="TextBlock.subtle">
-        <Setter Property="Opacity" Value="0.7" />
+        <Setter Property="Foreground" Value="#D1D5DB" />
     </Style>
 
-    <!-- Card surface used for profile rows, panels, etc. -->
-    <Style Selector="Border.card">
-        <Setter Property="Padding" Value="16" />
+    <!-- Sidebar surface — slightly darker than the window background. -->
+    <Style Selector="Border.sidebar">
+        <Setter Property="Background" Value="#020617" />
+        <Setter Property="BorderBrush" Value="#1E293B" />
+        <Setter Property="BorderThickness" Value="0,0,1,0" />
+    </Style>
+
+    <!-- Sidebar nav item button. -->
+    <Style Selector="Button.nav">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Padding" Value="14,10" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="8" />
-        <Setter Property="Background" Value="#14808080" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style Selector="Button.nav /template/ ContentPresenter">
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#22808080" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.nav:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#33808080" />
+    </Style>
+    <Style Selector="Button.nav.active">
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.nav.active /template/ ContentPresenter">
+        <Setter Property="Background" Value="#3B82F6" />
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.nav.active:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#2563EB" />
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+
+    <!-- Card surface — clearly lighter than the window background (slate-800). -->
+    <Style Selector="Border.card">
+        <Setter Property="Padding" Value="18" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Background" Value="#1E293B" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="#22808080" />
+        <Setter Property="BorderBrush" Value="#334155" />
+        <Setter Property="BoxShadow" Value="0 2 12 0 #33000000" />
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
                 <BrushTransition Property="Background" Duration="0:0:0.15" />
+                <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.15" />
             </Transitions>
         </Setter>
     </Style>
     <Style Selector="Border.card:pointerover">
-        <Setter Property="Background" Value="#1F808080" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+        <Setter Property="Background" Value="#243044" />
+        <Setter Property="BorderBrush" Value="#3B82F6" />
+        <Setter Property="BoxShadow" Value="0 4 16 0 #55000000" />
     </Style>
 
     <!-- ListBox styled as a stack of cards (no selection chrome). -->
@@ -50,8 +119,10 @@
     </Style>
     <Style Selector="ListBox.cards ListBoxItem">
         <Setter Property="Padding" Value="0" />
-        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="Margin" Value="0,0,0,10" />
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
     <Style Selector="ListBox.cards ListBoxItem /template/ ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
@@ -66,6 +137,85 @@
     </Style>
     <Style Selector="ListBox.cards ListBoxItem:selected:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!-- Pill / chip badge — used for role tags, status indicators. -->
+    <Style Selector="Border.pill">
+        <Setter Property="Padding" Value="10,3" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Background" Value="#22808080" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.pill TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style Selector="Border.pill.accent">
+        <Setter Property="Background" Value="#332196F3" />
+    </Style>
+    <Style Selector="Border.pill.accent TextBlock">
+        <Setter Property="Foreground" Value="#FF64B5F6" />
+    </Style>
+    <Style Selector="Border.pill.warn">
+        <Setter Property="Background" Value="#33FF9800" />
+    </Style>
+    <Style Selector="Border.pill.warn TextBlock">
+        <Setter Property="Foreground" Value="#FFFFB74D" />
+    </Style>
+    <Style Selector="Border.pill.success">
+        <Setter Property="Background" Value="#334CAF50" />
+    </Style>
+    <Style Selector="Border.pill.success TextBlock">
+        <Setter Property="Foreground" Value="#FF81C784" />
+    </Style>
+    <Style Selector="Border.pill.danger">
+        <Setter Property="Background" Value="#33EF4444" />
+    </Style>
+    <Style Selector="Border.pill.danger TextBlock">
+        <Setter Property="Foreground" Value="#FFEF5350" />
+    </Style>
+
+    <!-- Avatar — circular initials badge for connection profiles. -->
+    <Style Selector="Border.avatar">
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.avatar TextBlock">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <!-- Search-style TextBox. -->
+    <Style Selector="TextBox.search">
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="14,9" />
+        <Setter Property="MinHeight" Value="42" />
+        <Setter Property="MaxHeight" Value="42" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Background" Value="#1E293B" />
+        <Setter Property="BorderBrush" Value="#334155" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="#F3F4F6" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="TextBox.search /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#1E293B" />
+        <Setter Property="BorderBrush" Value="#334155" />
+    </Style>
+    <Style Selector="TextBox.search:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#243044" />
+        <Setter Property="BorderBrush" Value="#475569" />
+    </Style>
+    <Style Selector="TextBox.search:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#243044" />
+        <Setter Property="BorderBrush" Value="#3B82F6" />
     </Style>
 
     <!-- Compact icon-style button (used for delete X, etc.). -->
@@ -91,12 +241,16 @@
         <Setter Property="Foreground" Value="#FFE53935" />
     </Style>
 
-    <!-- Whole-card button (no chrome; the inner Border.card carries hover styling). -->
+    <!-- Whole-card button (no chrome; the inner Border.card carries hover styling).
+         Force neutral foreground so content text doesn't inherit the theme's
+         "primary button" accent color treatment. -->
     <Style Selector="Button.card-button">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />
+        <Setter Property="Foreground" Value="#F3F4F6" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Stretch" />
     </Style>
@@ -105,14 +259,17 @@
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="TextElement.Foreground" Value="#F3F4F6" />
     </Style>
     <Style Selector="Button.card-button:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="TextElement.Foreground" Value="#F3F4F6" />
     </Style>
     <Style Selector="Button.card-button:pressed /template/ ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="TextElement.Foreground" Value="#F3F4F6" />
     </Style>
 
     <!-- Filled "danger" button (used for destructive confirmations). -->
@@ -132,14 +289,211 @@
         <Setter Property="TextElement.Foreground" Value="White" />
     </Style>
 
+    <!-- Custom caption buttons (min / max-restore / close) in our own title bar.
+         Background must be slate-900 (the window color) so the buttons don't
+         get tinted by Semi.Avalonia's default Button surface. -->
+    <Style Selector="Button.caption">
+        <Setter Property="Background" Value="#0F172A" />
+        <Setter Property="BorderBrush" Value="#0F172A" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Foreground" Value="#94A3B8" />
+        <Setter Property="Width" Value="46" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.caption /template/ ContentPresenter">
+        <Setter Property="Background" Value="#0F172A" />
+        <Setter Property="BorderBrush" Value="#0F172A" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="TextElement.Foreground" Value="#94A3B8" />
+    </Style>
+    <Style Selector="Button.caption:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#1E293B" />
+        <Setter Property="BorderBrush" Value="#1E293B" />
+        <Setter Property="TextElement.Foreground" Value="#F3F4F6" />
+    </Style>
+    <Style Selector="Button.caption:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#020617" />
+        <Setter Property="BorderBrush" Value="#020617" />
+        <Setter Property="TextElement.Foreground" Value="#F3F4F6" />
+    </Style>
+    <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#DC2626" />
+        <Setter Property="BorderBrush" Value="#DC2626" />
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.caption.close:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#991B1B" />
+        <Setter Property="BorderBrush" Value="#991B1B" />
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+
+    <!-- Tab control: underline-style (Material/Sakai). -->
+    <Style Selector="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="TabControl /template/ Border">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="BorderBrush" Value="#1E293B" />
+    </Style>
+    <Style Selector="TabItem">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="#94A3B8" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Padding" Value="0,8,0,10" />
+        <Setter Property="Margin" Value="0,0,24,0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="BorderThickness" Value="0,0,0,2" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="TabItem /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0,0,0,2" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="0,8,0,10" />
+    </Style>
+    <Style Selector="TabItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="#475569" />
+        <Setter Property="TextElement.Foreground" Value="#F3F4F6" />
+    </Style>
+    <Style Selector="TabItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="#3B82F6" />
+        <Setter Property="TextElement.Foreground" Value="#3B82F6" />
+    </Style>
+    <Style Selector="TabItem:selected">
+        <Setter Property="Foreground" Value="#3B82F6" />
+    </Style>
+
+    <!-- Tab badge — small pill counter inside tab header. -->
+    <Style Selector="Border.badge">
+        <Setter Property="Padding" Value="6,1" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Background" Value="#1E293B" />
+        <Setter Property="MinWidth" Value="22" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.badge TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="#94A3B8" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
     <!-- Form section grouping inside dialogs. -->
     <Style Selector="StackPanel.form-section">
         <Setter Property="Spacing" Value="4" />
     </Style>
     <Style Selector="StackPanel.form-section TextBlock.label">
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="Opacity" Value="0.7" />
+        <Setter Property="Foreground" Value="#94A3B8" />
         <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+
+    <!-- Global TextBox styling (dark slate). -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="#1E293B" />
+        <Setter Property="BorderBrush" Value="#334155" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="#F3F4F6" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="TextBox /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#1E293B" />
+        <Setter Property="BorderBrush" Value="#334155" />
+    </Style>
+    <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#243044" />
+        <Setter Property="BorderBrush" Value="#475569" />
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#243044" />
+        <Setter Property="BorderBrush" Value="#3B82F6" />
+    </Style>
+    <Style Selector="TextBox:disabled /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#0F172A" />
+        <Setter Property="BorderBrush" Value="#1E293B" />
+    </Style>
+
+    <!-- Global ComboBox styling (dark slate). -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="#1E293B" />
+        <Setter Property="BorderBrush" Value="#334155" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="#F3F4F6" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <!-- Global CheckBox styling. -->
+    <Style Selector="CheckBox">
+        <Setter Property="Foreground" Value="#F3F4F6" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <!-- Default (non-accent, non-danger) Button — secondary outlined. -->
+    <Style Selector="Button:not(.accent):not(.danger):not(.icon):not(.card-button):not(.nav)">
+        <Setter Property="Background" Value="#1E293B" />
+        <Setter Property="BorderBrush" Value="#334155" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="#F3F4F6" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="14,8" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="Button:not(.accent):not(.danger):not(.icon):not(.card-button):not(.nav) /template/ ContentPresenter">
+        <Setter Property="Background" Value="#1E293B" />
+        <Setter Property="BorderBrush" Value="#334155" />
+    </Style>
+    <Style Selector="Button:not(.accent):not(.danger):not(.icon):not(.card-button):not(.nav):pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#243044" />
+        <Setter Property="BorderBrush" Value="#475569" />
+    </Style>
+    <Style Selector="Button:not(.accent):not(.danger):not(.icon):not(.card-button):not(.nav):pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#0F172A" />
+        <Setter Property="BorderBrush" Value="#475569" />
+    </Style>
+
+    <!-- Accent Button — primary action (hardcoded blue, override Semi defaults). -->
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="#3B82F6" />
+        <Setter Property="BorderBrush" Value="#3B82F6" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style Selector="Button.accent /template/ ContentPresenter">
+        <Setter Property="Background" Value="#3B82F6" />
+        <Setter Property="BorderBrush" Value="#3B82F6" />
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#2563EB" />
+        <Setter Property="BorderBrush" Value="#2563EB" />
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.accent:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#1D4ED8" />
+        <Setter Property="BorderBrush" Value="#1D4ED8" />
+        <Setter Property="TextElement.Foreground" Value="White" />
     </Style>
 
 </Styles>

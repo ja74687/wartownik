@@ -43,6 +43,8 @@ public static class Bootstrapper
         services.AddSingleton<IConnectionProfileEditor, AvaloniaConnectionProfileEditor>();
         services.AddSingleton<IConnectionTester, PostgresConnectionTester>();
         services.AddSingleton<IPostgresMetadataService, PostgresMetadataService>();
+        services.AddSingleton<IPostgresRoleAdminService, PostgresRoleAdminService>();
+        services.AddSingleton<IRoleEditor, AvaloniaRoleEditor>();
         services.AddSingleton<IConfirmationDialog, AvaloniaConfirmationDialog>();
 
         services.AddSingleton<IStringResources>(_ => ResourceManagerStringResources.ForApplicationStrings());
@@ -53,6 +55,28 @@ public static class Bootstrapper
                 DefaultLanguage));
 
         services.AddTransient<ConnectionProfileEditorViewModel>();
+        services.AddTransient<RoleEditorViewModel>();
+        services.AddSingleton<ProfileDetailsViewModel.DatabaseDetailsFactory>(sp =>
+            (profile, dbName) => new DatabaseDetailsViewModel(
+                profile,
+                dbName,
+                sp.GetRequiredService<ILocalizationService>(),
+                sp.GetRequiredService<IConnectionProfileService>(),
+                sp.GetRequiredService<IPostgresMetadataService>()));
+
+        services.AddSingleton<MainWindowViewModel.ProfileDetailsFactory>(sp =>
+            profile => new ProfileDetailsViewModel(
+                profile,
+                sp.GetRequiredService<ILocalizationService>(),
+                sp.GetRequiredService<IConnectionProfileService>(),
+                sp.GetRequiredService<IPostgresMetadataService>(),
+                sp.GetRequiredService<IPostgresRoleAdminService>(),
+                sp.GetRequiredService<IRoleEditor>(),
+                sp.GetRequiredService<IConfirmationDialog>(),
+                sp.GetRequiredService<ProfileDetailsViewModel.DatabaseDetailsFactory>()));
+
+        // MainWindowViewModel needs IConnectionTester + IPostgresMetadataService for
+        // background per-profile status + counter refresh on the list view.
         services.AddTransient<MainWindowViewModel>();
 
         return services;

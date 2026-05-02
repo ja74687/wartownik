@@ -1,5 +1,6 @@
 using System.Globalization;
 using Wartownik.Connections;
+using Wartownik.Dialogs;
 using Wartownik.Localization;
 using Wartownik.ViewModels;
 
@@ -20,17 +21,29 @@ public class ProfileDetailsViewModelTests
 
     private static ProfileDetailsViewModel Create(
         FakeProfileService? profiles = null,
-        FakeMetadataService? metadata = null)
+        FakeMetadataService? metadata = null,
+        FakeRoleAdminService? roleAdmin = null,
+        FakeRoleEditor? roleEditor = null,
+        FakeConfirmationDialog? confirmation = null)
     {
         var loc = new LocalizationService(
             new EmptyResources(),
             new[] { English },
             English);
+        var profilesService = profiles ?? new FakeProfileService();
+        var metaService = metadata ?? new FakeMetadataService();
+        ProfileDetailsViewModel.DatabaseDetailsFactory dbFactory = (p, db) =>
+            new DatabaseDetailsViewModel(p, db, loc, profilesService, metaService);
+
         return new ProfileDetailsViewModel(
             SampleProfile(),
             loc,
-            profiles ?? new FakeProfileService(),
-            metadata ?? new FakeMetadataService());
+            profilesService,
+            metaService,
+            roleAdmin ?? new FakeRoleAdminService(),
+            roleEditor ?? new FakeRoleEditor(),
+            confirmation ?? new FakeConfirmationDialog { NextResult = true },
+            dbFactory);
     }
 
     [Fact]
@@ -46,7 +59,7 @@ public class ProfileDetailsViewModelTests
         Assert.Equal(3, sut.Databases.Count);
         Assert.Equal(new[] { "alpha", "beta", "gamma" }, sut.Databases.Select(d => d.Name));
         Assert.True(sut.HasDatabases);
-        Assert.False(sut.IsEmpty);
+        Assert.False(sut.IsDatabasesEmpty);
     }
 
     [Fact]
@@ -58,7 +71,8 @@ public class ProfileDetailsViewModelTests
         await sut.LoadAsync();
 
         Assert.False(sut.HasDatabases);
-        Assert.True(sut.IsEmpty);
+        Assert.True(sut.IsDatabasesEmpty);
+        Assert.True(sut.IsRolesEmpty);
     }
 
     [Fact]
@@ -79,15 +93,16 @@ public class ProfileDetailsViewModelTests
     public async Task LoadAsync_passes_password_from_profile_service_to_metadata()
     {
         var profiles = new FakeProfileService();
-        profiles.SavedPasswords[SampleProfile().Id] = "secret123";
-        // FakeProfileService key not matching SampleProfile().Id since each call returns new profile;
-        // Use the actual VM's profile id:
         var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
         var profile = SampleProfile();
         profiles.SavedPasswords[profile.Id] = "secret123";
 
         var metadata = new FakeMetadataService(new[] { "x" });
-        var sut = new ProfileDetailsViewModel(profile, loc, profiles, metadata);
+        ProfileDetailsViewModel.DatabaseDetailsFactory dbFactory = (p, db) =>
+            new DatabaseDetailsViewModel(p, db, loc, profiles, metadata);
+        var sut = new ProfileDetailsViewModel(profile, loc, profiles, metadata,
+            new FakeRoleAdminService(), new FakeRoleEditor(),
+            new FakeConfirmationDialog { NextResult = true }, dbFactory);
 
         await sut.LoadAsync();
 
@@ -105,6 +120,81 @@ public class ProfileDetailsViewModelTests
         await sut.LoadAsync();
 
         Assert.Equal("", metadata.LastPassword);
+    }
+
+    [Fact]
+    public async Task LoadAsync_splits_login_roles_into_Users_and_no_login_into_Roles()
+    {
+        var metadata = new FakeMetadataService(new[] { "ignored" });
+        metadata.SetRoles(new[]
+        {
+            new RoleSummary("admin", IsSuperuser: true, CanCreateDb: true, CanCreateRole: true, CanLogin: true),
+            new RoleSummary("readonly", IsSuperuser: false, CanCreateDb: false, CanCreateRole: false, CanLogin: true),
+            new RoleSummary("group_a", IsSuperuser: false, CanCreateDb: false, CanCreateRole: false, CanLogin: false),
+        });
+        var sut = Create(metadata: metadata);
+
+        await sut.LoadAsync();
+
+        Assert.Equal(new[] { "admin", "readonly" }, sut.Users.Select(r => r.Name));
+        Assert.Equal(new[] { "group_a" }, sut.Roles.Select(r => r.Name));
+        Assert.True(sut.HasUsers);
+        Assert.True(sut.HasRoles);
+        Assert.False(sut.IsUsersEmpty);
+        Assert.False(sut.IsRolesEmpty);
+    }
+
+    [Fact]
+    public async Task LoadAsync_marks_users_and_roles_empty_when_none_returned()
+    {
+        var metadata = new FakeMetadataService(new[] { "db1" });
+        // SetRoles defaults to empty
+        var sut = Create(metadata: metadata);
+
+        await sut.LoadAsync();
+
+        Assert.False(sut.HasUsers);
+        Assert.True(sut.IsUsersEmpty);
+        Assert.False(sut.HasRoles);
+        Assert.True(sut.IsRolesEmpty);
+    }
+
+    [Fact]
+    public async Task LoadAsync_marks_users_empty_when_only_no_login_roles_returned()
+    {
+        var metadata = new FakeMetadataService(new[] { "db1" });
+        metadata.SetRoles(new[]
+        {
+            new RoleSummary("group_a", IsSuperuser: false, CanCreateDb: false, CanCreateRole: false, CanLogin: false),
+        });
+        var sut = Create(metadata: metadata);
+
+        await sut.LoadAsync();
+
+        Assert.True(sut.IsUsersEmpty);
+        Assert.False(sut.IsRolesEmpty);
+    }
+
+    [Fact]
+    public async Task AddUserCommand_passes_canLoginDefault_true_to_editor()
+    {
+        var roleEditor = new FakeRoleEditor { NextRequest = null };
+        var sut = Create(roleEditor: roleEditor);
+
+        await sut.AddUserCommand.ExecuteAsync();
+
+        Assert.True(roleEditor.LastCanLoginDefault);
+    }
+
+    [Fact]
+    public async Task AddRoleCommand_passes_canLoginDefault_false_to_editor()
+    {
+        var roleEditor = new FakeRoleEditor { NextRequest = null };
+        var sut = Create(roleEditor: roleEditor);
+
+        await sut.AddRoleCommand.ExecuteAsync();
+
+        Assert.False(roleEditor.LastCanLoginDefault);
     }
 
     [Fact]
@@ -130,17 +220,258 @@ public class ProfileDetailsViewModelTests
     }
 
     [Fact]
+    public async Task AddRoleCommand_when_editor_returns_request_creates_role_and_reloads()
+    {
+        var profiles = new FakeProfileService();
+        var profile = SampleProfile();
+        profiles.SavedPasswords[profile.Id] = "pwd";
+
+        var metadata = new FakeMetadataService(Array.Empty<string>());
+        var roleAdmin = new FakeRoleAdminService();
+        var roleEditor = new FakeRoleEditor
+        {
+            NextRequest = new CreateRoleRequest("alice", false, false, false, true, "rolepw"),
+        };
+        var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
+        ProfileDetailsViewModel.DatabaseDetailsFactory dbFactory = (p, db) =>
+            new DatabaseDetailsViewModel(p, db, loc, profiles, metadata);
+        var sut = new ProfileDetailsViewModel(profile, loc, profiles, metadata, roleAdmin, roleEditor,
+            new FakeConfirmationDialog { NextResult = true }, dbFactory);
+
+        await sut.AddRoleCommand.ExecuteAsync();
+
+        Assert.Single(roleAdmin.CreatedRoles);
+        Assert.Equal("alice", roleAdmin.CreatedRoles[0].RoleName);
+        Assert.Equal("pwd", roleAdmin.LastPassword);
+    }
+
+    [Fact]
+    public async Task AddRoleCommand_when_editor_cancels_does_not_call_admin()
+    {
+        var roleAdmin = new FakeRoleAdminService();
+        var roleEditor = new FakeRoleEditor { NextRequest = null };
+        var sut = Create(roleAdmin: roleAdmin, roleEditor: roleEditor);
+
+        await sut.AddRoleCommand.ExecuteAsync();
+
+        Assert.Empty(roleAdmin.CreatedRoles);
+    }
+
+    [Fact]
+    public async Task AddRoleCommand_sets_error_message_when_admin_throws()
+    {
+        var roleAdmin = new FakeRoleAdminService { ThrowOnCreate = new InvalidOperationException("boom") };
+        var roleEditor = new FakeRoleEditor
+        {
+            NextRequest = new CreateRoleRequest("x", false, false, false, false, null),
+        };
+        var sut = Create(roleAdmin: roleAdmin, roleEditor: roleEditor);
+
+        await sut.AddRoleCommand.ExecuteAsync();
+
+        Assert.Equal("boom", sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task EditRoleCommand_when_editor_returns_alter_request_calls_admin_and_reloads()
+    {
+        var profiles = new FakeProfileService();
+        var profile = SampleProfile();
+        profiles.SavedPasswords[profile.Id] = "pwd";
+
+        var roleAdmin = new FakeRoleAdminService();
+        var roleEditor = new FakeRoleEditor
+        {
+            NextAlterRequest = new AlterRoleRequest("alice", true, false, false, true, "newpw"),
+        };
+        var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
+        var meta = new FakeMetadataService(Array.Empty<string>());
+        ProfileDetailsViewModel.DatabaseDetailsFactory dbFactory = (p, db) =>
+            new DatabaseDetailsViewModel(p, db, loc, profiles, meta);
+        var sut = new ProfileDetailsViewModel(profile, loc, profiles, meta,
+            roleAdmin, roleEditor, new FakeConfirmationDialog(), dbFactory);
+        var item = new RoleItemViewModel(new RoleSummary("alice", false, false, false, true), loc);
+
+        await sut.EditRoleCommand.ExecuteAsync(item);
+
+        Assert.Equal("alice", roleEditor.LastEditTarget!.Name);
+        Assert.Single(roleAdmin.AlteredRoles);
+        Assert.Equal("alice", roleAdmin.AlteredRoles[0].RoleName);
+        Assert.True(roleAdmin.AlteredRoles[0].IsSuperuser);
+        Assert.Equal("pwd", roleAdmin.LastAlterPassword);
+    }
+
+    [Fact]
+    public async Task EditRoleCommand_when_editor_cancels_does_not_call_admin()
+    {
+        var roleAdmin = new FakeRoleAdminService();
+        var roleEditor = new FakeRoleEditor { NextAlterRequest = null };
+        var sut = Create(roleAdmin: roleAdmin, roleEditor: roleEditor);
+        var item = new RoleItemViewModel(new RoleSummary("x", false, false, false, false), sut.Localization);
+
+        await sut.EditRoleCommand.ExecuteAsync(item);
+
+        Assert.Empty(roleAdmin.AlteredRoles);
+    }
+
+    [Fact]
+    public async Task EditRoleCommand_sets_error_message_when_admin_throws()
+    {
+        var roleAdmin = new FakeRoleAdminService { ThrowOnAlter = new InvalidOperationException("permission denied") };
+        var roleEditor = new FakeRoleEditor
+        {
+            NextAlterRequest = new AlterRoleRequest("x", false, false, false, false, null),
+        };
+        var sut = Create(roleAdmin: roleAdmin, roleEditor: roleEditor);
+        var item = new RoleItemViewModel(new RoleSummary("x", false, false, false, false), sut.Localization);
+
+        await sut.EditRoleCommand.ExecuteAsync(item);
+
+        Assert.Equal("permission denied", sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task EditRoleCommand_with_invalid_parameter_does_nothing()
+    {
+        var roleAdmin = new FakeRoleAdminService();
+        var roleEditor = new FakeRoleEditor
+        {
+            NextAlterRequest = new AlterRoleRequest("x", false, false, false, false, null),
+        };
+        var sut = Create(roleAdmin: roleAdmin, roleEditor: roleEditor);
+
+        await sut.EditRoleCommand.ExecuteAsync("not a role");
+
+        Assert.Null(roleEditor.LastEditTarget);
+        Assert.Empty(roleAdmin.AlteredRoles);
+    }
+
+    [Fact]
+    public async Task DropRoleCommand_when_user_confirms_drops_role_and_reloads()
+    {
+        var profiles = new FakeProfileService();
+        var profile = SampleProfile();
+        profiles.SavedPasswords[profile.Id] = "pwd";
+        var metadata = new FakeMetadataService(Array.Empty<string>());
+        var roleAdmin = new FakeRoleAdminService();
+        var confirmation = new FakeConfirmationDialog { NextResult = true };
+        var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
+
+        ProfileDetailsViewModel.DatabaseDetailsFactory dbFactory = (p, db) =>
+            new DatabaseDetailsViewModel(p, db, loc, profiles, metadata);
+        var sut = new ProfileDetailsViewModel(profile, loc, profiles, metadata, roleAdmin,
+            new FakeRoleEditor(), confirmation, dbFactory);
+        var item = new RoleItemViewModel(new RoleSummary("alice", false, false, false, true), loc);
+
+        await sut.DropRoleCommand.ExecuteAsync(item);
+
+        Assert.True(confirmation.WasAsked);
+        Assert.True(confirmation.LastRequest!.IsDestructive);
+        Assert.Single(roleAdmin.DroppedRoles);
+        Assert.Equal("alice", roleAdmin.DroppedRoles[0]);
+        Assert.Equal("pwd", roleAdmin.LastDropPassword);
+    }
+
+    [Fact]
+    public async Task DropRoleCommand_when_user_cancels_does_not_drop()
+    {
+        var roleAdmin = new FakeRoleAdminService();
+        var confirmation = new FakeConfirmationDialog { NextResult = false };
+        var sut = Create(roleAdmin: roleAdmin, confirmation: confirmation);
+        var loc = sut.Localization;
+        var item = new RoleItemViewModel(new RoleSummary("x", false, false, false, false), loc);
+
+        await sut.DropRoleCommand.ExecuteAsync(item);
+
+        Assert.True(confirmation.WasAsked);
+        Assert.Empty(roleAdmin.DroppedRoles);
+    }
+
+    [Fact]
+    public async Task DropRoleCommand_with_invalid_parameter_does_nothing()
+    {
+        var roleAdmin = new FakeRoleAdminService();
+        var confirmation = new FakeConfirmationDialog { NextResult = true };
+        var sut = Create(roleAdmin: roleAdmin, confirmation: confirmation);
+
+        await sut.DropRoleCommand.ExecuteAsync("not a role");
+
+        Assert.False(confirmation.WasAsked);
+        Assert.Empty(roleAdmin.DroppedRoles);
+    }
+
+    [Fact]
+    public async Task DropRoleCommand_sets_error_message_when_admin_throws()
+    {
+        var roleAdmin = new FakeRoleAdminService { ThrowOnDrop = new InvalidOperationException("owns objects") };
+        var confirmation = new FakeConfirmationDialog { NextResult = true };
+        var sut = Create(roleAdmin: roleAdmin, confirmation: confirmation);
+        var item = new RoleItemViewModel(new RoleSummary("x", false, false, false, false), sut.Localization);
+
+        await sut.DropRoleCommand.ExecuteAsync(item);
+
+        Assert.Equal("owns objects", sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task OpenDatabaseCommand_sets_selected_database_and_loads_it()
+    {
+        var sut = Create(metadata: new FakeMetadataService(new[] { "ignored" }));
+        var item = new DatabaseItemViewModel(new DatabaseSummary("mydb"));
+
+        await sut.OpenDatabaseCommand.ExecuteAsync(item);
+
+        Assert.NotNull(sut.SelectedDatabase);
+        Assert.True(sut.IsViewingDatabase);
+        Assert.Equal("mydb", sut.SelectedDatabase!.DatabaseName);
+    }
+
+    [Fact]
+    public async Task OpenDatabaseCommand_with_invalid_parameter_does_nothing()
+    {
+        var sut = Create();
+
+        await sut.OpenDatabaseCommand.ExecuteAsync("not a viewmodel");
+
+        Assert.Null(sut.SelectedDatabase);
+        Assert.False(sut.IsViewingDatabase);
+    }
+
+    [Fact]
+    public async Task BackToDatabasesCommand_clears_selected_database()
+    {
+        var sut = Create();
+        var item = new DatabaseItemViewModel(new DatabaseSummary("mydb"));
+        await sut.OpenDatabaseCommand.ExecuteAsync(item);
+        Assert.True(sut.IsViewingDatabase);
+
+        await sut.BackToDatabasesCommand.ExecuteAsync();
+
+        Assert.Null(sut.SelectedDatabase);
+        Assert.False(sut.IsViewingDatabase);
+    }
+
+    [Fact]
     public void Constructor_throws_on_null_arguments()
     {
         var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
         var profile = SampleProfile();
         var profiles = new FakeProfileService();
         var metadata = new FakeMetadataService();
+        var roleAdmin = new FakeRoleAdminService();
+        var roleEditor = new FakeRoleEditor();
+        var confirm = new FakeConfirmationDialog();
+        ProfileDetailsViewModel.DatabaseDetailsFactory dbFactory = (p, db) =>
+            new DatabaseDetailsViewModel(p, db, loc, profiles, metadata);
 
-        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(null!, loc, profiles, metadata));
-        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, null!, profiles, metadata));
-        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, null!, metadata));
-        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, profiles, null!));
+        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(null!, loc, profiles, metadata, roleAdmin, roleEditor, confirm, dbFactory));
+        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, null!, profiles, metadata, roleAdmin, roleEditor, confirm, dbFactory));
+        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, null!, metadata, roleAdmin, roleEditor, confirm, dbFactory));
+        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, profiles, null!, roleAdmin, roleEditor, confirm, dbFactory));
+        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, profiles, metadata, null!, roleEditor, confirm, dbFactory));
+        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, profiles, metadata, roleAdmin, null!, confirm, dbFactory));
+        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, profiles, metadata, roleAdmin, roleEditor, null!, dbFactory));
+        Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, profiles, metadata, roleAdmin, roleEditor, confirm, null!));
     }
 
     private sealed class EmptyResources : IStringResources
@@ -170,7 +501,9 @@ public class ProfileDetailsViewModelTests
 
     private sealed class FakeMetadataService : IPostgresMetadataService
     {
-        private Func<ConnectionProfile, IReadOnlyList<DatabaseSummary>> _resolver;
+        private Func<ConnectionProfile, IReadOnlyList<DatabaseSummary>> _databaseResolver;
+        private Func<ConnectionProfile, IReadOnlyList<RoleSummary>> _roleResolver;
+
         public ConnectionProfile? LastProfile { get; private set; }
         public string? LastPassword { get; private set; }
 
@@ -179,18 +512,23 @@ public class ProfileDetailsViewModelTests
         {
         }
 
-        public FakeMetadataService(IReadOnlyList<string> names)
+        public FakeMetadataService(IReadOnlyList<string> databaseNames)
         {
-            _resolver = _ => names.Select(n => new DatabaseSummary(n)).ToList();
+            _databaseResolver = _ => databaseNames.Select(n => new DatabaseSummary(n)).ToList();
+            _roleResolver = _ => Array.Empty<RoleSummary>();
         }
 
         public FakeMetadataService(Func<ConnectionProfile, IReadOnlyList<DatabaseSummary>> resolver)
         {
-            _resolver = resolver;
+            _databaseResolver = resolver;
+            _roleResolver = _ => Array.Empty<RoleSummary>();
         }
 
-        public void SetResult(IReadOnlyList<string> names) =>
-            _resolver = _ => names.Select(n => new DatabaseSummary(n)).ToList();
+        public void SetResult(IReadOnlyList<string> databaseNames) =>
+            _databaseResolver = _ => databaseNames.Select(n => new DatabaseSummary(n)).ToList();
+
+        public void SetRoles(IReadOnlyList<RoleSummary> roles) =>
+            _roleResolver = _ => roles;
 
         public Task<IReadOnlyList<DatabaseSummary>> ListDatabasesAsync(
             ConnectionProfile profile,
@@ -199,7 +537,110 @@ public class ProfileDetailsViewModelTests
         {
             LastProfile = profile;
             LastPassword = password;
-            return Task.FromResult(_resolver(profile));
+            return Task.FromResult(_databaseResolver(profile));
+        }
+
+        public Task<IReadOnlyList<RoleSummary>> ListRolesAsync(
+            ConnectionProfile profile,
+            string password,
+            CancellationToken cancellationToken = default)
+        {
+            LastProfile = profile;
+            LastPassword = password;
+            return Task.FromResult(_roleResolver(profile));
+        }
+
+        public Task<IReadOnlyList<SchemaSummary>> ListSchemasAsync(
+            ConnectionProfile profile,
+            string password,
+            string databaseName,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SchemaSummary>>(Array.Empty<SchemaSummary>());
+    }
+
+    private sealed class FakeRoleAdminService : IPostgresRoleAdminService
+    {
+        public List<CreateRoleRequest> CreatedRoles { get; } = new();
+        public List<AlterRoleRequest> AlteredRoles { get; } = new();
+        public List<string> DroppedRoles { get; } = new();
+        public string? LastPassword { get; private set; }
+        public string? LastAlterPassword { get; private set; }
+        public string? LastDropPassword { get; private set; }
+        public Exception? ThrowOnCreate { get; set; }
+        public Exception? ThrowOnAlter { get; set; }
+        public Exception? ThrowOnDrop { get; set; }
+
+        public Task CreateRoleAsync(
+            ConnectionProfile profile,
+            string profilePassword,
+            CreateRoleRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (ThrowOnCreate is not null)
+                throw ThrowOnCreate;
+            LastPassword = profilePassword;
+            CreatedRoles.Add(request);
+            return Task.CompletedTask;
+        }
+
+        public Task AlterRoleAsync(
+            ConnectionProfile profile,
+            string profilePassword,
+            AlterRoleRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (ThrowOnAlter is not null)
+                throw ThrowOnAlter;
+            LastAlterPassword = profilePassword;
+            AlteredRoles.Add(request);
+            return Task.CompletedTask;
+        }
+
+        public Task DropRoleAsync(
+            ConnectionProfile profile,
+            string profilePassword,
+            string roleName,
+            CancellationToken cancellationToken = default)
+        {
+            if (ThrowOnDrop is not null)
+                throw ThrowOnDrop;
+            LastDropPassword = profilePassword;
+            DroppedRoles.Add(roleName);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeRoleEditor : IRoleEditor
+    {
+        public CreateRoleRequest? NextRequest { get; set; }
+        public AlterRoleRequest? NextAlterRequest { get; set; }
+        public RoleSummary? LastEditTarget { get; private set; }
+        public bool? LastCanLoginDefault { get; private set; }
+
+        public Task<CreateRoleRequest?> CreateAsync(bool canLoginDefault = false, CancellationToken cancellationToken = default)
+        {
+            LastCanLoginDefault = canLoginDefault;
+            return Task.FromResult(NextRequest);
+        }
+
+        public Task<AlterRoleRequest?> EditAsync(RoleSummary current, CancellationToken cancellationToken = default)
+        {
+            LastEditTarget = current;
+            return Task.FromResult(NextAlterRequest);
+        }
+    }
+
+    private sealed class FakeConfirmationDialog : IConfirmationDialog
+    {
+        public bool NextResult { get; set; }
+        public bool WasAsked { get; private set; }
+        public ConfirmationRequest? LastRequest { get; private set; }
+
+        public Task<bool> ConfirmAsync(ConfirmationRequest request, CancellationToken cancellationToken = default)
+        {
+            WasAsked = true;
+            LastRequest = request;
+            return Task.FromResult(NextResult);
         }
     }
 }
