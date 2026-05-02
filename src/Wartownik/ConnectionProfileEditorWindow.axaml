@@ -1,0 +1,159 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:Wartownik.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="700"
+        x:Class="Wartownik.ConnectionProfileEditorWindow"
+        x:DataType="vm:ConnectionProfileEditorViewModel"
+        Title="{Binding Title, FallbackValue='Profile'}"
+        Width="520" Height="700"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="Transparent"
+        TransparencyLevelHint="Mica,AcrylicBlur,Blur,None"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="32">
+
+    <Grid RowDefinitions="32,*">
+
+        <!-- Custom title bar (drag area) -->
+        <Border Grid.Row="0"
+                Background="Transparent"
+                PointerPressed="OnTitleBarPointerPressed" />
+
+        <Grid Grid.Row="1" Margin="32,16,32,24" RowDefinitions="Auto,*,Auto,Auto">
+
+            <TextBlock Grid.Row="0"
+                       Classes="h2"
+                       Text="{Binding Title}"
+                       Margin="0,0,0,20" />
+
+            <ScrollViewer Grid.Row="1" Padding="0,0,4,0">
+                <StackPanel Spacing="14">
+
+                    <StackPanel Classes="form-section">
+                        <TextBlock Classes="label"
+                                   Text="{Binding Localization[Profile.DisplayName], FallbackValue='Display name'}" />
+                        <TextBox Text="{Binding DisplayName}" />
+                    </StackPanel>
+
+                    <StackPanel Classes="form-section">
+                        <TextBlock Classes="label"
+                                   Text="{Binding Localization[Profile.Host], FallbackValue='Host'}" />
+                        <TextBox Text="{Binding Host}" />
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,16,140">
+                        <StackPanel Grid.Column="0" Classes="form-section">
+                            <TextBlock Classes="label"
+                                       Text="{Binding Localization[Profile.Database], FallbackValue='Database'}" />
+                            <TextBox Text="{Binding Database}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Classes="form-section">
+                            <TextBlock Classes="label"
+                                       Text="{Binding Localization[Profile.Port], FallbackValue='Port'}" />
+                            <NumericUpDown Value="{Binding Port}" Minimum="1" Maximum="65535" FormatString="0" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Classes="form-section">
+                        <TextBlock Classes="label"
+                                   Text="{Binding Localization[Profile.Username], FallbackValue='Username'}" />
+                        <TextBox Text="{Binding Username}" />
+                    </StackPanel>
+
+                    <StackPanel Classes="form-section">
+                        <TextBlock Classes="label"
+                                   Text="{Binding Localization[Profile.Password], FallbackValue='Password'}" />
+                        <TextBox Text="{Binding Password}" PasswordChar="*" />
+                    </StackPanel>
+
+                    <StackPanel Classes="form-section">
+                        <TextBlock Classes="label"
+                                   Text="{Binding Localization[Profile.SslMode], FallbackValue='SSL mode'}" />
+                        <ComboBox ItemsSource="{Binding AvailableSslModes}"
+                                  SelectedItem="{Binding SslMode}"
+                                  HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Status banners (only one is visible at a time) -->
+            <StackPanel Grid.Row="2" Spacing="8" Margin="0,12,0,0">
+
+                <!-- Validation error -->
+                <Border Padding="12,10"
+                        CornerRadius="6"
+                        Background="#1AE53935"
+                        BorderBrush="#88E53935"
+                        BorderThickness="1"
+                        IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               Foreground="#FFE53935"
+                               TextWrapping="Wrap" />
+                </Border>
+
+                <!-- Testing in progress -->
+                <Border Padding="12,10"
+                        CornerRadius="6"
+                        Background="#1A2196F3"
+                        BorderBrush="#882196F3"
+                        BorderThickness="1"
+                        IsVisible="{Binding IsTesting}">
+                    <TextBlock Text="{Binding Localization[Test.InProgress]}"
+                               Foreground="#FF64B5F6" />
+                </Border>
+
+                <!-- Test succeeded -->
+                <Border Padding="12,10"
+                        CornerRadius="6"
+                        Background="#1A4CAF50"
+                        BorderBrush="#884CAF50"
+                        BorderThickness="1"
+                        IsVisible="{Binding TestSucceeded}">
+                    <TextBlock Text="{Binding Localization[Test.Success]}"
+                               Foreground="#FF66BB6A" />
+                </Border>
+
+                <!-- Test failed -->
+                <Border Padding="12,10"
+                        CornerRadius="6"
+                        Background="#1AE53935"
+                        BorderBrush="#88E53935"
+                        BorderThickness="1"
+                        IsVisible="{Binding TestFailed}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Localization[Test.Failed]}"
+                                   Foreground="#FFE53935"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding TestErrorMessage}"
+                                   Foreground="#FFE53935"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Actions: Test on left, Cancel/Save on right -->
+            <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,20,0,0">
+                <Button Grid.Column="0"
+                        Content="{Binding Localization[Common.Test], FallbackValue='Test'}"
+                        Command="{Binding TestCommand}"
+                        Padding="20,8"
+                        MinWidth="100" />
+                <Button Grid.Column="2"
+                        Content="{Binding Localization[Common.Cancel], FallbackValue='Cancel'}"
+                        Click="OnCancel"
+                        Padding="20,8"
+                        MinWidth="100"
+                        Margin="0,0,8,0" />
+                <Button Grid.Column="3"
+                        Content="{Binding Localization[Common.Save], FallbackValue='Save'}"
+                        Classes="accent"
+                        Click="OnSave"
+                        Padding="20,8"
+                        MinWidth="100" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

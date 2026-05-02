@@ -1,0 +1,55 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dlg="using:Wartownik.Dialogs"
+        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="220"
+        x:Class="Wartownik.ConfirmationWindow"
+        x:DataType="dlg:ConfirmationRequest"
+        Title="{Binding Title, FallbackValue='Confirm'}"
+        Width="440" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="Transparent"
+        TransparencyLevelHint="Mica,AcrylicBlur,Blur,None"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="32">
+
+    <Grid RowDefinitions="32,*">
+
+        <!-- Custom title bar (drag area) -->
+        <Border Grid.Row="0"
+                Background="Transparent"
+                PointerPressed="OnTitleBarPointerPressed" />
+
+        <Grid Grid.Row="1" Margin="28,16,28,24" RowDefinitions="Auto,Auto,Auto">
+
+            <TextBlock Grid.Row="0"
+                       Classes="h2"
+                       Text="{Binding Title}"
+                       Margin="0,0,0,12" />
+
+            <TextBlock Grid.Row="1"
+                       Text="{Binding Message}"
+                       TextWrapping="Wrap"
+                       LineHeight="20" />
+
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8"
+                        Margin="0,24,0,0">
+                <Button Content="{Binding CancelLabel}"
+                        Click="OnCancel"
+                        Padding="20,8"
+                        MinWidth="100" />
+                <Button Content="{Binding ConfirmLabel}"
+                        Classes.accent="{Binding !IsDestructive}"
+                        Classes.danger="{Binding IsDestructive}"
+                        Click="OnConfirm"
+                        Padding="20,8"
+                        MinWidth="100" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

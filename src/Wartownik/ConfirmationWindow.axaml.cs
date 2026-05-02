@@ -4,9 +4,9 @@ using Avalonia.Interactivity;
 
 namespace Wartownik;
 
-public partial class MainWindow : Window
+public partial class ConfirmationWindow : Window
 {
-    public MainWindow()
+    public ConfirmationWindow()
     {
         InitializeComponent();
     }
@@ -17,10 +17,7 @@ public partial class MainWindow : Window
             BeginMoveDrag(e);
     }
 
-    private void OnTitleBarDoubleTapped(object? sender, TappedEventArgs e)
-    {
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-    }
+    private void OnConfirm(object? sender, RoutedEventArgs e) => Close(true);
+
+    private void OnCancel(object? sender, RoutedEventArgs e) => Close(false);
 }

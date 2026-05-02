@@ -1,0 +1,145 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Typography -->
+    <Style Selector="TextBlock.h1">
+        <Setter Property="FontSize" Value="32" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LineHeight" Value="40" />
+    </Style>
+    <Style Selector="TextBlock.h2">
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.h3">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.caption">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Opacity" Value="0.6" />
+    </Style>
+    <Style Selector="TextBlock.subtle">
+        <Setter Property="Opacity" Value="0.7" />
+    </Style>
+
+    <!-- Card surface used for profile rows, panels, etc. -->
+    <Style Selector="Border.card">
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Background" Value="#14808080" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="#22808080" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+                <BrushTransition Property="Background" Duration="0:0:0.15" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.card:pointerover">
+        <Setter Property="Background" Value="#1F808080" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+    </Style>
+
+    <!-- ListBox styled as a stack of cards (no selection chrome). -->
+    <Style Selector="ListBox.cards">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.cards ListBoxItem">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.cards ListBoxItem /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="ListBox.cards ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.cards ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.cards ListBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!-- Compact icon-style button (used for delete X, etc.). -->
+    <Style Selector="Button.icon">
+        <Setter Property="MinWidth" Value="36" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#1F808080" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.icon.danger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#1FCC3030" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.icon.danger:pointerover">
+        <Setter Property="Foreground" Value="#FFE53935" />
+    </Style>
+
+    <!-- Whole-card button (no chrome; the inner Border.card carries hover styling). -->
+    <Style Selector="Button.card-button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.card-button /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.card-button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.card-button:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <!-- Filled "danger" button (used for destructive confirmations). -->
+    <Style Selector="Button.danger:not(.icon)">
+        <Setter Property="Background" Value="#E53935" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderBrush" Value="#E53935" />
+    </Style>
+    <Style Selector="Button.danger:not(.icon):pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#C62828" />
+        <Setter Property="BorderBrush" Value="#C62828" />
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.danger:not(.icon):pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#B71C1C" />
+        <Setter Property="BorderBrush" Value="#B71C1C" />
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+
+    <!-- Form section grouping inside dialogs. -->
+    <Style Selector="StackPanel.form-section">
+        <Setter Property="Spacing" Value="4" />
+    </Style>
+    <Style Selector="StackPanel.form-section TextBlock.label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Opacity" Value="0.7" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+
+</Styles>

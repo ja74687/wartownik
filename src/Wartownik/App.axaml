@@ -2,9 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Wartownik.App"
              RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
-
     <Application.Styles>
-        <FluentTheme />
+        <StyleInclude Source="avares://Semi.Avalonia/SemiTheme.axaml" />
+        <StyleInclude Source="avares://Wartownik/Styles/AppStyles.axaml" />
     </Application.Styles>
 </Application>

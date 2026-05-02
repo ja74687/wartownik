@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="App.Title" xml:space="preserve">
+    <value>Wartownik</value>
+  </data>
+  <data name="Languages.English" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Languages.Polish" xml:space="preserve">
+    <value>Polish</value>
+  </data>
+  <data name="Profiles.Title" xml:space="preserve">
+    <value>Connection profiles</value>
+  </data>
+  <data name="Profiles.AddNew" xml:space="preserve">
+    <value>Add profile</value>
+  </data>
+  <data name="Profiles.NoneYet" xml:space="preserve">
+    <value>No profiles yet.</value>
+  </data>
+  <data name="Profiles.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Profiles.Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Profile.New" xml:space="preserve">
+    <value>New connection profile</value>
+  </data>
+  <data name="Profile.Edit" xml:space="preserve">
+    <value>Edit connection profile</value>
+  </data>
+  <data name="Profile.DisplayName" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="Profile.Host" xml:space="preserve">
+    <value>Host</value>
+  </data>
+  <data name="Profile.Port" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="Profile.Database" xml:space="preserve">
+    <value>Database</value>
+  </data>
+  <data name="Profile.Username" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="Profile.Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Profile.SslMode" xml:space="preserve">
+    <value>SSL mode</value>
+  </data>
+  <data name="Common.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Common.Test" xml:space="preserve">
+    <value>Test</value>
+  </data>
+  <data name="Common.Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="Profiles.DeleteConfirmTitle" xml:space="preserve">
+    <value>Delete profile?</value>
+  </data>
+  <data name="Profiles.DeleteConfirmMessage" xml:space="preserve">
+    <value>Delete profile "{0}"? The saved password will be removed too. This cannot be undone.</value>
+  </data>
+  <data name="Test.InProgress" xml:space="preserve">
+    <value>Testing connection…</value>
+  </data>
+  <data name="Test.Success" xml:space="preserve">
+    <value>Connection successful.</value>
+  </data>
+  <data name="Test.Failed" xml:space="preserve">
+    <value>Connection failed:</value>
+  </data>
+  <data name="Common.Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Common.Loading" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
+  <data name="Databases.Title" xml:space="preserve">
+    <value>Databases</value>
+  </data>
+  <data name="Databases.Empty" xml:space="preserve">
+    <value>No databases visible to this user.</value>
+  </data>
+  <data name="Databases.LoadFailed" xml:space="preserve">
+    <value>Failed to load databases:</value>
+  </data>
+</root>
