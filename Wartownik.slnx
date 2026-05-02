@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Wartownik/Wartownik.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Wartownik.IntegrationTests/Wartownik.IntegrationTests.csproj" />
+    <Project Path="tests/Wartownik.UnitTests/Wartownik.UnitTests.csproj" />
+  </Folder>
+</Solution>
