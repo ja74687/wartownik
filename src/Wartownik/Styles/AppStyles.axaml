@@ -399,43 +399,41 @@
         <Setter Property="Foreground" Value="#3B82F6" />
     </Style>
 
-    <!-- Permissions matrix cells — coloured circle button with a single glyph based on CellState.
-         Uses Segoe Fluent Icons so the glyphs render with consistent weight (plain Unicode washes
-         out against the slate background). -->
-    <Style Selector="Button.matrix-cell">
+    <!-- Permissions matrix cells — Border instead of Button.
+         We tried Button across three iterations and Semi.Avalonia's button template kept overriding
+         the glyph font from somewhere we couldn't reach. Border + Tapped handler in code-behind
+         gives us full visual control. -->
+    <Style Selector="Border.matrix-cell">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="Width" Value="34" />
-        <Setter Property="Height" Value="34" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="BorderBrush" Value="#1E293B" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="32" />
         <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Foreground" Value="#64748B" />
-        <Setter Property="FontSize" Value="20" />
-        <Setter Property="FontWeight" Value="Bold" />
     </Style>
-    <!-- Semi.Avalonia's Button template applies its own text size on the ContentPresenter, which
-         shrinks our cell glyph despite the outer Button.FontSize=20. Override at the template level. -->
-    <Style Selector="Button.matrix-cell /template/ ContentPresenter">
-        <Setter Property="TextBlock.FontSize" Value="20" />
-        <Setter Property="TextBlock.FontWeight" Value="Bold" />
-    </Style>
-    <Style Selector="Button.matrix-cell:pointerover /template/ ContentPresenter">
+    <Style Selector="Border.matrix-cell:pointerover">
         <Setter Property="Background" Value="#1E293B" />
-        <Setter Property="CornerRadius" Value="999" />
-        <Setter Property="TextBlock.FontSize" Value="20" />
-        <Setter Property="TextBlock.FontWeight" Value="Bold" />
+        <Setter Property="BorderBrush" Value="#475569" />
     </Style>
-    <Style Selector="Button.matrix-cell.granted">
+    <!-- Cell state classes only paint the inner glyph colour — set on the child TextBlock via
+         the same Classes mechanism since the TextBlock is the actual visible element. -->
+    <Style Selector="Border.matrix-cell > TextBlock">
+        <Setter Property="Foreground" Value="#64748B" />
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.matrix-cell.granted > TextBlock">
         <Setter Property="Foreground" Value="#10B981" />
     </Style>
-    <Style Selector="Button.matrix-cell.pending-grant">
+    <Style Selector="Border.matrix-cell.pending-grant > TextBlock">
         <Setter Property="Foreground" Value="#3B82F6" />
     </Style>
-    <Style Selector="Button.matrix-cell.pending-revoke">
+    <Style Selector="Border.matrix-cell.pending-revoke > TextBlock">
         <Setter Property="Foreground" Value="#EF4444" />
     </Style>
 

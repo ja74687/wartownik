@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Wartownik.Connections;
+using Wartownik.Dialogs;
 using Wartownik.Localization;
 
 namespace Wartownik.ViewModels;
@@ -29,6 +30,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     private readonly IConnectionProfileService _profiles;
     private readonly IPostgresMetadataService _metadata;
     private readonly IPostgresGrantService _grants;
+    private readonly IPreviewSqlDialog? _previewSqlDialog;
 
     private RoleSummary? _selectedRole;
     private bool _isLoading;
@@ -56,6 +58,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     public RelayCommand DiscardCommand { get; }
     public AsyncRelayCommand ApplyRoleCommand { get; }
     public RelayCommand DiscardRoleCommand { get; }
+    public AsyncRelayCommand PreviewSqlCommand { get; }
 
     public PermissionsMatrixViewModel(
         ConnectionProfile profile,
@@ -63,7 +66,8 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         ILocalizationService localization,
         IConnectionProfileService profiles,
         IPostgresMetadataService metadata,
-        IPostgresGrantService grants)
+        IPostgresGrantService grants,
+        IPreviewSqlDialog? previewSqlDialog = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentException.ThrowIfNullOrWhiteSpace(databaseName);
@@ -78,12 +82,14 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         _profiles = profiles;
         _metadata = metadata;
         _grants = grants;
+        _previewSqlDialog = previewSqlDialog;
 
         LoadCommand = new AsyncRelayCommand(() => LoadAsync());
         ApplyCommand = new AsyncRelayCommand(() => ApplyAsync(), () => HasPending && !_isApplying);
         DiscardCommand = new RelayCommand(Discard, () => HasPending && !_isApplying);
         ApplyRoleCommand = new AsyncRelayCommand(p => ApplyRoleAsync(p as string));
         DiscardRoleCommand = new RelayCommand(p => DiscardRole(p as string));
+        PreviewSqlCommand = new AsyncRelayCommand(() => PreviewSqlAsync(), () => HasPending && _previewSqlDialog is not null);
     }
 
     public RoleSummary? SelectedRole
@@ -101,6 +107,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
 
             SetField(ref _selectedRole, value);
             RaisePropertyChanged(nameof(HasSelectedRole));
+            RaisePropertyChanged(nameof(IsSelectedRoleSuperuser));
 
             // Fire and forget the grants refresh — UI shows IsLoading while it runs.
             _ = LoadGrantsForSelectedRoleAsync();
@@ -151,6 +158,13 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     }
 
     public bool HasSelectedRole => _selectedRole is not null;
+
+    /// <summary>
+    /// True when the picked target role is a superuser. Superusers bypass all permission checks
+    /// in Postgres, so the matrix is effectively decorative for them — GRANT/REVOKE statements
+    /// would succeed but change nothing in practice. UI surfaces a warning banner.
+    /// </summary>
+    public bool IsSelectedRoleSuperuser => _selectedRole?.IsSuperuser == true;
 
     public bool IsLoading
     {
@@ -353,6 +367,46 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Build the same statement batch that Apply would run, group it by role, and hand it
+    /// to the preview dialog. Read-only — closing the dialog does not commit anything.
+    /// </summary>
+    public async Task PreviewSqlAsync(CancellationToken cancellationToken = default)
+    {
+        if (_previewSqlDialog is null)
+            return;
+
+        // Capture the visible row's edits so previewed SQL matches what Apply-all would do.
+        if (_selectedRole is not null)
+            CapturePendingForRole(_selectedRole);
+
+        if (_pendingByRole.Count == 0)
+            return;
+
+        var groups = new List<PreviewSqlGroup>(_pendingByRole.Count);
+        foreach (var roleName in _pendingByRole.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+        {
+            var diff = _pendingByRole[roleName];
+            var changes = diff
+                .Select(kvp => new GrantChange(
+                    kvp.Key.Schema,
+                    kvp.Key.Privilege,
+                    kvp.Value ? GrantOperation.Grant : GrantOperation.Revoke))
+                .ToList();
+            var statements = PostgresGrantService.BuildStatements(roleName, changes);
+            groups.Add(new PreviewSqlGroup(roleName, statements));
+        }
+
+        var title = string.Format(
+            Localization["Permissions.PreviewTitleFormat"] is { Length: > 0 } template
+                ? template : "{0} pending changes across {1} role(s)",
+            PendingCount,
+            groups.Count);
+
+        var request = new PreviewSqlRequest(groups, title);
+        await _previewSqlDialog.ShowAsync(request, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>
     /// Throw away every pending edit — across all roles the user has touched.
     /// The sticky bar shows totals across roles, so Discard's blast radius matches.
     /// </summary>
@@ -538,5 +592,6 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         RaisePropertyChanged(nameof(IsContentVisible));
         ApplyCommand.RaiseCanExecuteChanged();
         DiscardCommand.RaiseCanExecuteChanged();
+        PreviewSqlCommand.RaiseCanExecuteChanged();
     }
 }

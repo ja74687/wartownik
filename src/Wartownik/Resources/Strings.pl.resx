@@ -313,6 +313,9 @@
   <data name="Permissions.PreviewComingSoon" xml:space="preserve">
     <value>Modal podglądu SQL — wkrótce (Iter 5d).</value>
   </data>
+  <data name="Permissions.PreviewTitleFormat" xml:space="preserve">
+    <value>{0} oczekujących zmian na {1} rolach</value>
+  </data>
   <data name="Permissions.Apply" xml:space="preserve">
     <value>Zastosuj</value>
   </data>
@@ -321,6 +324,12 @@
   </data>
   <data name="Permissions.PerRoleHint" xml:space="preserve">
     <value>Zastosuj lub odrzuć każdą rolę osobno — albo użyj przycisków powyżej dla wszystkich naraz.</value>
+  </data>
+  <data name="Permissions.SuperuserBannerTitle" xml:space="preserve">
+    <value>Ta rola to SUPERUSER</value>
+  </data>
+  <data name="Permissions.SuperuserBannerBody" xml:space="preserve">
+    <value>Postgres pomija wszystkie sprawdzenia uprawnień dla superuserów. Poniższe komórki pokazują tylko jawne granty — ale w praktyce ten użytkownik ma już każde uprawnienie na każdym obiekcie. GRANT/REVOKE na superuserze to no-op.</value>
   </data>
   <data name="DatabaseTabs.SqlLogComingSoon" xml:space="preserve">
     <value>Log SQL — wkrótce</value>

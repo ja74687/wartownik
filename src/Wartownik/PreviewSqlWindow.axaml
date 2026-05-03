@@ -1,0 +1,107 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dlg="using:Wartownik.Dialogs"
+        mc:Ignorable="d" d:DesignWidth="720" d:DesignHeight="540"
+        x:Class="Wartownik.PreviewSqlWindow"
+        x:DataType="dlg:PreviewSqlRequest"
+        Title="{Binding Title, FallbackValue='Preview SQL'}"
+        Width="720" Height="540"
+        MinWidth="500" MinHeight="360"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        Background="#0F172A"
+        TransparencyLevelHint="None"
+        WindowDecorations="BorderOnly"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="32">
+
+    <Grid RowDefinitions="32,*">
+
+        <!-- Custom title bar -->
+        <Grid Grid.Row="0" Background="#0F172A" ColumnDefinitions="*,Auto">
+            <Border Grid.Column="0"
+                    Background="#0F172A"
+                    PointerPressed="OnTitleBarPointerPressed" />
+            <Button Grid.Column="1"
+                    Classes="caption close"
+                    Content="&#xE8BB;"
+                    FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                    ToolTip.Tip="Close"
+                    Click="OnCloseClick" />
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="28,16,28,20" RowDefinitions="Auto,Auto,*,Auto">
+
+            <TextBlock Grid.Row="0"
+                       Classes="eyebrow"
+                       Text="PERMISSIONS MATRIX" />
+            <TextBlock Grid.Row="0"
+                       Classes="h2"
+                       Text="{Binding Title}"
+                       Margin="0,16,0,0" />
+
+            <TextBlock Grid.Row="1"
+                       Classes="caption"
+                       Margin="0,8,0,0"
+                       TextWrapping="Wrap"
+                       Text="Apply will run each role's batch in its own transaction. Review and copy below if needed." />
+
+            <!-- Per-role groups, monospace SQL -->
+            <ScrollViewer Grid.Row="2"
+                          Margin="0,16,0,0"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Groups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="dlg:PreviewSqlGroup">
+                            <Border Classes="card" Padding="16,12" Margin="0,0,0,10">
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Classes="h3"
+                                                   Text="{Binding RoleName}" />
+                                        <TextBlock Grid.Column="1"
+                                                   Classes="caption"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Text="{Binding Statements.Count, StringFormat='{}{0} statement(s)'}" />
+                                    </Grid>
+                                    <ItemsControl ItemsSource="{Binding Statements}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"
+                                                           FontFamily="Consolas,Cascadia Mono,monospace"
+                                                           FontSize="12"
+                                                           Foreground="#D1D5DB"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,2,0,2" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="3"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8"
+                        Margin="0,16,0,0">
+                <Button Padding="20,8"
+                        MinWidth="160"
+                        Content="Copy to clipboard"
+                        Click="OnCopyClick" />
+                <Button Padding="20,8"
+                        MinWidth="100"
+                        Classes="accent"
+                        Content="Close"
+                        Click="OnCloseButtonClick" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Wartownik.Connections;
+using Wartownik.Dialogs;
 using Wartownik.Localization;
 
 namespace Wartownik.ViewModels;
@@ -11,6 +12,7 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
     private readonly IPostgresMetadataService _metadata;
     private readonly IPostgresGrantService? _grants;
     private readonly IConnectionTester? _tester;
+    private readonly IPreviewSqlDialog? _previewSqlDialog;
 
     private bool _isLoading;
     private string? _errorMessage;
@@ -35,7 +37,8 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
         IConnectionProfileService profiles,
         IPostgresMetadataService metadata,
         IConnectionTester? tester = null,
-        IPostgresGrantService? grants = null)
+        IPostgresGrantService? grants = null,
+        IPreviewSqlDialog? previewSqlDialog = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(summary);
@@ -51,6 +54,7 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
         _metadata = metadata;
         _tester = tester;
         _grants = grants;
+        _previewSqlDialog = previewSqlDialog;
 
         Schemas.CollectionChanged += (_, _) =>
         {
@@ -152,7 +156,21 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
         if (_permissionsMatrix is null)
         {
             var matrix = new PermissionsMatrixViewModel(
-                Profile, DatabaseName, Localization, _profiles, _metadata, _grants);
+                Profile, DatabaseName, Localization, _profiles, _metadata, _grants, _previewSqlDialog);
+
+            // Forward matrix's pending counters to AT A GLANCE so the Overview reflects
+            // whatever the user has staged in the Permissions tab — without us having to
+            // duplicate the counters across both VMs.
+            matrix.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(PermissionsMatrixViewModel.PendingCount))
+                {
+                    RaisePropertyChanged(nameof(PendingCount));
+                    RaisePropertyChanged(nameof(PendingCountText));
+                    RaisePropertyChanged(nameof(HasPendingChanges));
+                }
+            };
+
             PermissionsMatrix = matrix;
             return matrix.LoadAsync();
         }
@@ -188,16 +206,27 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
     public string SizeText => FormatSize(_summary.SizeBytes);
 
     public int SchemaCount => Schemas.Count;
-    // Iter 5 will populate these — for now scaffold with zero so AT A GLANCE renders correctly.
+    // Iter 6 will fill GrantCount with a real cluster-wide aggregation; for now stays at zero.
     public int GrantCount => 0;
-    public int PendingCount => 0;
+    /// <summary>
+    /// Total staged-but-not-applied edits across the matrix's tracked roles. Sourced from
+    /// the lazy PermissionsMatrix VM; until the user opens the Permissions tab there's no
+    /// matrix to ask, so we report 0.
+    /// </summary>
+    public int PendingCount => _permissionsMatrix?.PendingCount ?? 0;
     public bool HasPendingChanges => PendingCount > 0;
 
     // Display strings for AT A GLANCE. Real metrics show the number;
     // placeholders show an em-dash so we don't lie about "0 grants" before later iters fill them in.
     public string SchemaCountText => SchemaCount.ToString(CultureInfo.CurrentCulture);
-    public string GrantCountText => "—";       // Iter 5
-    public string PendingCountText => "—";     // Iter 5
+    public string GrantCountText => "—";       // Iter 6 — needs cluster-wide grant aggregation
+    /// <summary>
+    /// Em-dash before the user has opened Permissions (PendingCount has nothing to report);
+    /// once the matrix is alive we surface the live number, including 0.
+    /// </summary>
+    public string PendingCountText => _permissionsMatrix is null
+        ? "—"
+        : PendingCount.ToString(CultureInfo.CurrentCulture);
     public string LoginUserCountText => "—";   // Iter 6 — distinct login roles with privileges here
     public string LastApplyText => LocalizedOr("Overview.NeverApplied", "never"); // Iter 6 — last Wartownik apply
     public string RiskText => "—";             // Iter 6 — heuristic: SUPERUSER login w/ access, etc.

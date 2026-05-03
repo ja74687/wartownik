@@ -12,9 +12,10 @@
         MinWidth="780" MinHeight="500"
         Background="#0F172A"
         TransparencyLevelHint="None"
-        WindowDecorations="None"
+        WindowDecorations="BorderOnly"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="32">
+        ExtendClientAreaTitleBarHeightHint="32"
+        CanResize="True">
 
     <Grid RowDefinitions="32,*">
 
@@ -97,6 +98,26 @@
                                 Classes.active="{Binding IsAtDatabaseLevel}"
                                 Content="{Binding Details.SelectedDatabase.DatabaseName, FallbackValue=''}"
                                 IsVisible="{Binding IsAtDatabaseLevel}" />
+
+                        <!-- Pending changes hint — appears under the database breadcrumb when the
+                             user has staged edits in the Permissions matrix. Same warn palette
+                             as the sticky bar so it reads as "you have something to apply". -->
+                        <Border Margin="34,4,0,0"
+                                Padding="8,3"
+                                CornerRadius="999"
+                                Background="#1AF59E0B"
+                                BorderBrush="#88F59E0B"
+                                BorderThickness="1"
+                                HorizontalAlignment="Left"
+                                IsVisible="{Binding Details.SelectedDatabase.HasPendingChanges, FallbackValue=False}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Ellipse Width="6" Height="6" Fill="#F59E0B" VerticalAlignment="Center" />
+                                <TextBlock Foreground="#F59E0B"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding Details.SelectedDatabase.PendingCount, StringFormat='{}{0} pending changes'}" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Spacer (Row 2: *) -->
@@ -884,7 +905,11 @@
                                                                             Margin="0,16,0,0">
                                                                 <ContentControl.ContentTemplate>
                                                                     <DataTemplate DataType="vm:PermissionsMatrixViewModel">
-                                                                        <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+                                                                        <!-- Outer Grid: matrix area on top + sticky bar pinned to the bottom.
+                                                                             No outer ScrollViewer — the matrix card has its own internal scroll for
+                                                                             schemas, the sticky bar is always visible. -->
+                                                                        <Grid RowDefinitions="*,Auto">
+                                                                        <Grid Grid.Row="0" RowDefinitions="Auto,Auto,Auto,*,Auto">
 
                                                                             <!-- Target user dropdown -->
                                                                             <StackPanel Grid.Row="0" Spacing="6">
@@ -932,11 +957,54 @@
                                                                                            TextWrapping="Wrap" />
                                                                             </Border>
 
-                                                                            <!-- Matrix -->
-                                                                            <Border Grid.Row="2"
+                                                                            <!-- Superuser warning — Postgres bypasses every check for superusers, so the
+                                                                                 matrix is effectively decorative for them. Show this front and centre. -->
+                                                                            <Border Grid.Row="1"
+                                                                                    Padding="14,10"
+                                                                                    Margin="0,16,0,0"
+                                                                                    CornerRadius="8"
+                                                                                    Background="#1AF59E0B"
+                                                                                    BorderBrush="#88F59E0B"
+                                                                                    BorderThickness="1"
+                                                                                    IsVisible="{Binding IsSelectedRoleSuperuser}">
+                                                                                <StackPanel Spacing="2">
+                                                                                    <TextBlock FontWeight="SemiBold"
+                                                                                               Foreground="#F59E0B"
+                                                                                               Text="{Binding Localization[Permissions.SuperuserBannerTitle]}" />
+                                                                                    <TextBlock Foreground="#FCD34D"
+                                                                                               TextWrapping="Wrap"
+                                                                                               Text="{Binding Localization[Permissions.SuperuserBannerBody]}" />
+                                                                                </StackPanel>
+                                                                            </Border>
+
+                                                                            <!-- Legend (above the matrix). -->
+                                                                            <StackPanel Grid.Row="2"
+                                                                                        Orientation="Horizontal"
+                                                                                        Spacing="20"
+                                                                                        Margin="4,16,0,8">
+                                                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                                    <TextBlock Text="✓" Foreground="#10B981" FontWeight="Bold" FontSize="14" />
+                                                                                    <TextBlock Classes="caption" Text="{Binding Localization[Permissions.LegendGranted]}" />
+                                                                                </StackPanel>
+                                                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                                    <TextBlock Text="–" Foreground="#64748B" FontWeight="Bold" FontSize="14" />
+                                                                                    <TextBlock Classes="caption" Text="{Binding Localization[Permissions.LegendNotGranted]}" />
+                                                                                </StackPanel>
+                                                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                                    <TextBlock Text="+" Foreground="#3B82F6" FontWeight="Bold" FontSize="14" />
+                                                                                    <TextBlock Classes="caption" Text="{Binding Localization[Permissions.LegendPendingGrant]}" />
+                                                                                </StackPanel>
+                                                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                                    <TextBlock Text="✕" Foreground="#EF4444" FontWeight="Bold" FontSize="14" />
+                                                                                    <TextBlock Classes="caption" Text="{Binding Localization[Permissions.LegendPendingRevoke]}" />
+                                                                                </StackPanel>
+                                                                            </StackPanel>
+
+                                                                            <!-- Matrix — uses the rest of the available space; inner ScrollViewer
+                                                                                 handles many schemas. -->
+                                                                            <Border Grid.Row="3"
                                                                                     Classes="card"
                                                                                     Padding="0"
-                                                                                    Margin="0,16,0,0"
                                                                                     IsVisible="{Binding IsContentVisible}">
                                                                                 <Grid RowDefinitions="Auto,*">
                                                                                     <!-- Header row -->
@@ -977,54 +1045,60 @@
                                                                                                                 </Border>
                                                                                                             </StackPanel>
 
-                                                                                                            <Button Grid.Column="1" Classes="matrix-cell"
-                                                                                                                    Classes.granted="{Binding Usage.IsGranted}"
-                                                                                                                    Classes.pending-grant="{Binding Usage.IsPendingGrant}"
-                                                                                                                    Classes.pending-revoke="{Binding Usage.IsPendingRevoke}"
-                                                                                                                    Command="{Binding Usage.ToggleCommand}">
-                                                                                                                <TextBlock Text="{Binding Usage.Glyph}" FontSize="20" FontWeight="Bold" />
-                                                                                                            </Button>
-                                                                                                            <Button Grid.Column="2" Classes="matrix-cell"
-                                                                                                                    Classes.granted="{Binding Create.IsGranted}"
-                                                                                                                    Classes.pending-grant="{Binding Create.IsPendingGrant}"
-                                                                                                                    Classes.pending-revoke="{Binding Create.IsPendingRevoke}"
-                                                                                                                    Command="{Binding Create.ToggleCommand}">
-                                                                                                                <TextBlock Text="{Binding Create.Glyph}" FontSize="20" FontWeight="Bold" />
-                                                                                                            </Button>
-                                                                                                            <Button Grid.Column="3" Classes="matrix-cell"
-                                                                                                                    Classes.granted="{Binding Select.IsGranted}"
-                                                                                                                    Classes.pending-grant="{Binding Select.IsPendingGrant}"
-                                                                                                                    Classes.pending-revoke="{Binding Select.IsPendingRevoke}"
-                                                                                                                    Command="{Binding Select.ToggleCommand}">
-                                                                                                                <TextBlock Text="{Binding Select.Glyph}" FontSize="20" FontWeight="Bold" />
-                                                                                                            </Button>
-                                                                                                            <Button Grid.Column="4" Classes="matrix-cell"
-                                                                                                                    Classes.granted="{Binding Insert.IsGranted}"
-                                                                                                                    Classes.pending-grant="{Binding Insert.IsPendingGrant}"
-                                                                                                                    Classes.pending-revoke="{Binding Insert.IsPendingRevoke}"
-                                                                                                                    Command="{Binding Insert.ToggleCommand}">
-                                                                                                                <TextBlock Text="{Binding Insert.Glyph}" FontSize="20" FontWeight="Bold" />
-                                                                                                            </Button>
-                                                                                                            <Button Grid.Column="5" Classes="matrix-cell"
-                                                                                                                    Classes.granted="{Binding Update.IsGranted}"
-                                                                                                                    Classes.pending-grant="{Binding Update.IsPendingGrant}"
-                                                                                                                    Classes.pending-revoke="{Binding Update.IsPendingRevoke}"
-                                                                                                                    Command="{Binding Update.ToggleCommand}">
-                                                                                                                <TextBlock Text="{Binding Update.Glyph}" FontSize="20" FontWeight="Bold" />
-                                                                                                            </Button>
-                                                                                                            <Button Grid.Column="6" Classes="matrix-cell"
-                                                                                                                    Classes.granted="{Binding Delete.IsGranted}"
-                                                                                                                    Classes.pending-grant="{Binding Delete.IsPendingGrant}"
-                                                                                                                    Classes.pending-revoke="{Binding Delete.IsPendingRevoke}"
-                                                                                                                    Command="{Binding Delete.ToggleCommand}">
-                                                                                                                <TextBlock Text="{Binding Delete.Glyph}" FontSize="20" FontWeight="Bold" />
-                                                                                                            </Button>
-                                                                                                            <Button Grid.Column="7"
-                                                                                                                    Classes="matrix-cell"
+                                                                                                            <Border Grid.Column="1" Classes="matrix-cell"
+                                                                                                                    DataContext="{Binding Usage}"
+                                                                                                                    Classes.granted="{Binding IsGranted}"
+                                                                                                                    Classes.pending-grant="{Binding IsPendingGrant}"
+                                                                                                                    Classes.pending-revoke="{Binding IsPendingRevoke}"
+                                                                                                                    Tapped="OnMatrixCellTapped">
+                                                                                                                <TextBlock Text="{Binding Glyph}" />
+                                                                                                            </Border>
+                                                                                                            <Border Grid.Column="2" Classes="matrix-cell"
+                                                                                                                    DataContext="{Binding Create}"
+                                                                                                                    Classes.granted="{Binding IsGranted}"
+                                                                                                                    Classes.pending-grant="{Binding IsPendingGrant}"
+                                                                                                                    Classes.pending-revoke="{Binding IsPendingRevoke}"
+                                                                                                                    Tapped="OnMatrixCellTapped">
+                                                                                                                <TextBlock Text="{Binding Glyph}" />
+                                                                                                            </Border>
+                                                                                                            <Border Grid.Column="3" Classes="matrix-cell"
+                                                                                                                    DataContext="{Binding Select}"
+                                                                                                                    Classes.granted="{Binding IsGranted}"
+                                                                                                                    Classes.pending-grant="{Binding IsPendingGrant}"
+                                                                                                                    Classes.pending-revoke="{Binding IsPendingRevoke}"
+                                                                                                                    Tapped="OnMatrixCellTapped">
+                                                                                                                <TextBlock Text="{Binding Glyph}" />
+                                                                                                            </Border>
+                                                                                                            <Border Grid.Column="4" Classes="matrix-cell"
+                                                                                                                    DataContext="{Binding Insert}"
+                                                                                                                    Classes.granted="{Binding IsGranted}"
+                                                                                                                    Classes.pending-grant="{Binding IsPendingGrant}"
+                                                                                                                    Classes.pending-revoke="{Binding IsPendingRevoke}"
+                                                                                                                    Tapped="OnMatrixCellTapped">
+                                                                                                                <TextBlock Text="{Binding Glyph}" />
+                                                                                                            </Border>
+                                                                                                            <Border Grid.Column="5" Classes="matrix-cell"
+                                                                                                                    DataContext="{Binding Update}"
+                                                                                                                    Classes.granted="{Binding IsGranted}"
+                                                                                                                    Classes.pending-grant="{Binding IsPendingGrant}"
+                                                                                                                    Classes.pending-revoke="{Binding IsPendingRevoke}"
+                                                                                                                    Tapped="OnMatrixCellTapped">
+                                                                                                                <TextBlock Text="{Binding Glyph}" />
+                                                                                                            </Border>
+                                                                                                            <Border Grid.Column="6" Classes="matrix-cell"
+                                                                                                                    DataContext="{Binding Delete}"
+                                                                                                                    Classes.granted="{Binding IsGranted}"
+                                                                                                                    Classes.pending-grant="{Binding IsPendingGrant}"
+                                                                                                                    Classes.pending-revoke="{Binding IsPendingRevoke}"
+                                                                                                                    Tapped="OnMatrixCellTapped">
+                                                                                                                <TextBlock Text="{Binding Glyph}" />
+                                                                                                            </Border>
+                                                                                                            <!-- ALL toggle — DataContext stays the row VM, handler calls row.ToggleAll(). -->
+                                                                                                            <Border Grid.Column="7" Classes="matrix-cell"
                                                                                                                     ToolTip.Tip="Toggle ALL"
-                                                                                                                    Command="{Binding ToggleAllCommand}">
-                                                                                                                <TextBlock Text="∗" FontSize="20" FontWeight="Bold" />
-                                                                                                            </Button>
+                                                                                                                    Tapped="OnMatrixToggleAllTapped">
+                                                                                                                <TextBlock Text="∗" />
+                                                                                                            </Border>
                                                                                                         </Grid>
                                                                                                     </Border>
                                                                                                 </DataTemplate>
@@ -1035,48 +1109,25 @@
                                                                             </Border>
 
                                                                             <!-- Status / applied confirmation -->
-                                                                            <TextBlock Grid.Row="3"
+                                                                            <TextBlock Grid.Row="4"
                                                                                        Classes="caption"
                                                                                        Foreground="#10B981"
                                                                                        Margin="4,8,0,0"
                                                                                        Text="{Binding StatusMessage}"
                                                                                        IsVisible="{Binding HasStatus}" />
 
-                                                                            <!-- Legend -->
-                                                                            <StackPanel Grid.Row="3"
-                                                                                        Orientation="Horizontal"
-                                                                                        Spacing="20"
-                                                                                        Margin="4,12,0,0"
-                                                                                        IsVisible="{Binding !HasStatus}">
-                                                                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                                    <TextBlock Text="✓" Foreground="#10B981" FontWeight="Bold" FontSize="14" />
-                                                                                    <TextBlock Classes="caption" Text="{Binding Localization[Permissions.LegendGranted]}" />
-                                                                                </StackPanel>
-                                                                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                                    <TextBlock Text="–" Foreground="#64748B" FontWeight="Bold" FontSize="14" />
-                                                                                    <TextBlock Classes="caption" Text="{Binding Localization[Permissions.LegendNotGranted]}" />
-                                                                                </StackPanel>
-                                                                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                                    <TextBlock Text="+" Foreground="#3B82F6" FontWeight="Bold" FontSize="14" />
-                                                                                    <TextBlock Classes="caption" Text="{Binding Localization[Permissions.LegendPendingGrant]}" />
-                                                                                </StackPanel>
-                                                                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                                    <TextBlock Text="✕" Foreground="#EF4444" FontWeight="Bold" FontSize="14" />
-                                                                                    <TextBlock Classes="caption" Text="{Binding Localization[Permissions.LegendPendingRevoke]}" />
-                                                                                </StackPanel>
-                                                                            </StackPanel>
+                                                                        </Grid>
 
-                                                                            <!-- Sticky bottom bar — visible only when there are pending changes.
-                                                                                 Top row: total badge + Discard/Preview/Apply.
-                                                                                 Below: per-role pills so the user sees exactly who has staged what. -->
-                                                                            <Border Grid.Row="4"
-                                                                                    Margin="0,16,0,0"
-                                                                                    Padding="20,14"
-                                                                                    CornerRadius="10"
-                                                                                    Background="#1A1F2E"
-                                                                                    BorderBrush="#F59E0B"
-                                                                                    BorderThickness="1"
-                                                                                    IsVisible="{Binding HasPending}">
+                                                                        <!-- Sticky bottom bar — pinned to the bottom of the tab, OUTSIDE the
+                                                                             scroll area, so it's always visible when there's anything pending. -->
+                                                                        <Border Grid.Row="1"
+                                                                                Margin="0,12,0,0"
+                                                                                Padding="20,14"
+                                                                                CornerRadius="10"
+                                                                                Background="#1A1F2E"
+                                                                                BorderBrush="#F59E0B"
+                                                                                BorderThickness="1"
+                                                                                IsVisible="{Binding HasPending}">
                                                                                 <Grid RowDefinitions="Auto,Auto,Auto">
 
                                                                                     <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
@@ -1107,8 +1158,7 @@
                                                                                                     Content="{Binding Localization[Permissions.Discard]}"
                                                                                                     Command="{Binding DiscardCommand}" />
                                                                                             <Button Padding="14,8"
-                                                                                                    IsEnabled="False"
-                                                                                                    ToolTip.Tip="{Binding Localization[Permissions.PreviewComingSoon]}"
+                                                                                                    Command="{Binding PreviewSqlCommand}"
                                                                                                     Content="{Binding Localization[Permissions.PreviewSql]}" />
                                                                                             <Button Classes="accent"
                                                                                                     Padding="14,8"
@@ -1123,10 +1173,14 @@
                                                                                     </Grid>
 
                                                                                     <!-- Per-role breakdown — full card per role with its own Discard / Apply.
-                                                                                         User can ship one user's changes at a time without committing the rest. -->
-                                                                                    <ItemsControl Grid.Row="1"
+                                                                                         User can ship one user's changes at a time without committing the rest.
+                                                                                         Capped + scrollable so the sticky bar can never push the matrix off screen. -->
+                                                                                    <ScrollViewer Grid.Row="1"
                                                                                                   Margin="0,12,0,0"
-                                                                                                  ItemsSource="{Binding PendingGroups}">
+                                                                                                  MaxHeight="180"
+                                                                                                  HorizontalScrollBarVisibility="Disabled"
+                                                                                                  VerticalScrollBarVisibility="Auto">
+                                                                                    <ItemsControl ItemsSource="{Binding PendingGroups}">
                                                                                         <ItemsControl.ItemsPanel>
                                                                                             <ItemsPanelTemplate>
                                                                                                 <StackPanel Orientation="Vertical" Spacing="6" />
@@ -1196,6 +1250,7 @@
                                                                                             </DataTemplate>
                                                                                         </ItemsControl.ItemTemplate>
                                                                                     </ItemsControl>
+                                                                                    </ScrollViewer>
 
                                                                                     <!-- Hint -->
                                                                                     <TextBlock Grid.Row="2"
@@ -1204,7 +1259,7 @@
                                                                                                Text="{Binding Localization[Permissions.PerRoleHint]}"
                                                                                                IsVisible="{Binding HasMultiplePendingRoles}" />
                                                                                 </Grid>
-                                                                            </Border>
+                                                                        </Border>
                                                                         </Grid>
                                                                     </DataTemplate>
                                                                 </ContentControl.ContentTemplate>

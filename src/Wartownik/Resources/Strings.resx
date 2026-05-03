@@ -313,6 +313,9 @@
   <data name="Permissions.PreviewComingSoon" xml:space="preserve">
     <value>Preview SQL modal — coming soon (Iter 5d).</value>
   </data>
+  <data name="Permissions.PreviewTitleFormat" xml:space="preserve">
+    <value>{0} pending changes across {1} role(s)</value>
+  </data>
   <data name="Permissions.Apply" xml:space="preserve">
     <value>Apply</value>
   </data>
@@ -321,6 +324,12 @@
   </data>
   <data name="Permissions.PerRoleHint" xml:space="preserve">
     <value>Apply or discard each role independently — or use the buttons above for everything at once.</value>
+  </data>
+  <data name="Permissions.SuperuserBannerTitle" xml:space="preserve">
+    <value>This role is a SUPERUSER</value>
+  </data>
+  <data name="Permissions.SuperuserBannerBody" xml:space="preserve">
+    <value>Postgres bypasses every permission check for superusers. The cells below show explicit grants only — but in practice this user already has every privilege on every object. GRANT/REVOKE on a superuser is a no-op.</value>
   </data>
   <data name="DatabaseTabs.SqlLogComingSoon" xml:space="preserve">
     <value>SQL log — coming soon</value>
