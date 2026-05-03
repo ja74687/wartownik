@@ -8,6 +8,7 @@
         x:Class="Wartownik.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding Localization[App.Title]}"
+        Icon="/Assets/wartownik.ico"
         Width="1100" Height="680"
         MinWidth="780" MinHeight="500"
         Background="#0F172A"
@@ -58,16 +59,9 @@
                                 Spacing="10"
                                 Margin="6,8,0,18"
                                 VerticalAlignment="Center">
-                        <Border Width="22" Height="22"
-                                CornerRadius="999"
-                                BorderBrush="#3B82F6"
-                                BorderThickness="2"
-                                VerticalAlignment="Center">
-                            <Ellipse Width="6" Height="6"
-                                     Fill="#3B82F6"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center" />
-                        </Border>
+                        <Image Width="28" Height="28"
+                               Source="/Assets/wartownik.png"
+                               VerticalAlignment="Center" />
                         <TextBlock Classes="h2"
                                    Text="{Binding Localization[App.Title]}"
                                    VerticalAlignment="Center" />

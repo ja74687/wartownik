@@ -7,7 +7,16 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- Windows exe icon — picked up by file explorer / taskbar / installer. -->
+    <ApplicationIcon>Assets\wartownik.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- App icon for in-process use (Window.Icon, sidebar logo, About dialog…). -->
+    <AvaloniaResource Include="Assets\wartownik.ico" />
+    <AvaloniaResource Include="Assets\wartownik.png" />
+    <AvaloniaResource Include="Assets\wartownik.svg" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Wartownik.UnitTests" />

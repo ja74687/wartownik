@@ -7,6 +7,7 @@
         x:Class="Wartownik.YamlExportWindow"
         x:DataType="yml:YamlExportRequest"
         Title="Export YAML"
+        Icon="/Assets/wartownik.ico"
         Width="720" Height="540"
         MinWidth="500" MinHeight="360"
         WindowStartupLocation="CenterOwner"

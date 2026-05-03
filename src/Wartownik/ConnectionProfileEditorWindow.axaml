@@ -7,6 +7,7 @@
         x:Class="Wartownik.ConnectionProfileEditorWindow"
         x:DataType="vm:ConnectionProfileEditorViewModel"
         Title="{Binding Title, FallbackValue='Profile'}"
+        Icon="/Assets/wartownik.ico"
         Width="520" Height="700"
         WindowStartupLocation="CenterOwner"
         CanResize="False"

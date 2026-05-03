@@ -43,13 +43,15 @@ vpk pack `
   --packDir publish/win-x64 `
   --mainExe Wartownik.exe `
   --packTitle "Wartownik" `
-  --packAuthors "SofTime - Piotr Krakowski"
+  --packAuthors "SofTime - Piotr Krakowski" `
+  --icon src/Wartownik/Assets/wartownik.ico
 ```
 
 Output lands in `Releases/`:
-- `Wartownik-Setup.exe` — the installer end users download
+- `Wartownik-win-Setup.exe` — the installer end users download
+- `Wartownik-win-Portable.zip` — no-install portable ZIP
 - `Wartownik-0.1.0-full.nupkg` — the Velopack delta package
-- `RELEASES` — manifest
+- `releases.win.json` + `RELEASES` — manifests the updater reads
 
 ### 4. Push to GitHub Releases
 

@@ -7,6 +7,7 @@
         x:Class="Wartownik.PreviewSqlWindow"
         x:DataType="dlg:PreviewSqlRequest"
         Title="{Binding Title, FallbackValue='Preview SQL'}"
+        Icon="/Assets/wartownik.ico"
         Width="720" Height="540"
         MinWidth="500" MinHeight="360"
         WindowStartupLocation="CenterOwner"

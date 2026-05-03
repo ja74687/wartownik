@@ -7,6 +7,7 @@
         x:Class="Wartownik.ConfirmationWindow"
         x:DataType="dlg:ConfirmationRequest"
         Title="{Binding Title, FallbackValue='Confirm'}"
+        Icon="/Assets/wartownik.ico"
         Width="440" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False"

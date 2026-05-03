@@ -65,7 +65,8 @@ jobs:
             --packDir publish/win-x64 `
             --mainExe Wartownik.exe `
             --packTitle "Wartownik" `
-            --packAuthors "SofTime - Piotr Krakowski"
+            --packAuthors "SofTime - Piotr Krakowski" `
+            --icon src/Wartownik/Assets/wartownik.ico
 
       - name: Upload to GitHub Release
         env:

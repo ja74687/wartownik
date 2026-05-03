@@ -7,6 +7,7 @@
         x:Class="Wartownik.RoleEditorWindow"
         x:DataType="vm:RoleEditorViewModel"
         Title="{Binding Title, FallbackValue='Role'}"
+        Icon="/Assets/wartownik.ico"
         Width="500" Height="560"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
