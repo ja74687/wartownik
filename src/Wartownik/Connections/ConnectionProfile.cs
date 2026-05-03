@@ -10,6 +10,13 @@ public sealed record ConnectionProfile
     public required string Username { get; init; }
     public required PostgresSslMode SslMode { get; init; }
 
+    /// <summary>
+    /// Last time this profile was created or edited. Optional because we want to keep
+    /// reading older profiles.json files that don't have this field — they materialise as null
+    /// and surface as "—" in the UI rather than a wrong/zero timestamp.
+    /// </summary>
+    public DateTimeOffset? LastEditedAt { get; init; }
+
     public const int DefaultPort = 5432;
     public const int MaxDisplayNameLength = 100;
 
@@ -58,6 +65,7 @@ public sealed record ConnectionProfile
             Database = trimmedDatabase,
             Username = trimmedUsername,
             SslMode = sslMode,
+            LastEditedAt = null,
         };
     }
 

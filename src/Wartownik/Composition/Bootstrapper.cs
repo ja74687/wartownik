@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
+using Wartownik.Audit;
 using Wartownik.Connections;
 using Wartownik.Connections.Credentials;
 using Wartownik.Dialogs;
@@ -7,6 +8,7 @@ using Wartownik.Localization;
 using Wartownik.Postgres;
 using Wartownik.Sql;
 using Wartownik.ViewModels;
+using Wartownik.Yaml;
 
 namespace Wartownik.Composition;
 
@@ -37,6 +39,9 @@ public static class Bootstrapper
         services.AddSingleton<IConnectionProfileStore>(sp =>
             new JsonConnectionProfileStore(sp.GetRequiredService<AppPaths>().ProfilesFilePath));
 
+        services.AddSingleton<IAuditLogStore>(sp =>
+            new JsonAuditLogStore(sp.GetRequiredService<AppPaths>().AuditLogFilePath));
+
         services.AddSingleton<ICredentialStore>(sp => CreateCredentialStore(sp.GetRequiredService<AppPaths>()));
 
         services.AddSingleton<IConnectionProfileService, ConnectionProfileService>();
@@ -45,6 +50,8 @@ public static class Bootstrapper
         services.AddSingleton<IPostgresMetadataService, PostgresMetadataService>();
         services.AddSingleton<IPostgresRoleAdminService, PostgresRoleAdminService>();
         services.AddSingleton<IPostgresGrantService, PostgresGrantService>();
+        services.AddSingleton<IYamlExporter, YamlExporter>();
+        services.AddSingleton<IYamlExportDialog, AvaloniaYamlExportDialog>();
         services.AddSingleton<IRoleEditor, AvaloniaRoleEditor>();
         services.AddSingleton<IConfirmationDialog, AvaloniaConfirmationDialog>();
         services.AddSingleton<IPreviewSqlDialog, AvaloniaPreviewSqlDialog>();
@@ -67,7 +74,10 @@ public static class Bootstrapper
                 sp.GetRequiredService<IPostgresMetadataService>(),
                 sp.GetRequiredService<IConnectionTester>(),
                 sp.GetRequiredService<IPostgresGrantService>(),
-                sp.GetRequiredService<IPreviewSqlDialog>()));
+                sp.GetRequiredService<IPreviewSqlDialog>(),
+                sp.GetRequiredService<IAuditLogStore>(),
+                sp.GetRequiredService<IYamlExporter>(),
+                sp.GetRequiredService<IYamlExportDialog>()));
 
         services.AddSingleton<MainWindowViewModel.ProfileDetailsFactory>(sp =>
             profile => new ProfileDetailsViewModel(

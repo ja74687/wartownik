@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Wartownik.Audit;
 using Wartownik.Connections;
 using Wartownik.Dialogs;
 using Wartownik.Localization;
@@ -31,6 +32,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     private readonly IPostgresMetadataService _metadata;
     private readonly IPostgresGrantService _grants;
     private readonly IPreviewSqlDialog? _previewSqlDialog;
+    private readonly IAuditLogStore? _auditLog;
 
     private RoleSummary? _selectedRole;
     private bool _isLoading;
@@ -67,7 +69,8 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         IConnectionProfileService profiles,
         IPostgresMetadataService metadata,
         IPostgresGrantService grants,
-        IPreviewSqlDialog? previewSqlDialog = null)
+        IPreviewSqlDialog? previewSqlDialog = null,
+        IAuditLogStore? auditLog = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentException.ThrowIfNullOrWhiteSpace(databaseName);
@@ -83,6 +86,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         _metadata = metadata;
         _grants = grants;
         _previewSqlDialog = previewSqlDialog;
+        _auditLog = auditLog;
 
         LoadCommand = new AsyncRelayCommand(() => LoadAsync());
         ApplyCommand = new AsyncRelayCommand(() => ApplyAsync(), () => HasPending && !_isApplying);
@@ -470,9 +474,20 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
                     kvp.Value ? GrantOperation.Grant : GrantOperation.Revoke))
                 .ToList();
 
-            await _grants
-                .ApplyGrantsAsync(Profile, password, DatabaseName, roleName, changes, cancellationToken)
-                .ConfigureAwait(true);
+            var statements = PostgresGrantService.BuildStatements(roleName, changes);
+
+            try
+            {
+                await _grants
+                    .ApplyGrantsAsync(Profile, password, DatabaseName, roleName, changes, cancellationToken)
+                    .ConfigureAwait(true);
+                await WriteAuditAsync(roleName, statements, AuditOutcome.Success, null).ConfigureAwait(true);
+            }
+            catch (Exception roleEx)
+            {
+                await WriteAuditAsync(roleName, statements, AuditOutcome.Failed, roleEx.Message).ConfigureAwait(true);
+                throw;
+            }
 
             _pendingByRole.Remove(roleName);
 
@@ -543,9 +558,22 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
                         kvp.Value ? GrantOperation.Grant : GrantOperation.Revoke))
                     .ToList();
 
-                await _grants
-                    .ApplyGrantsAsync(Profile, password, DatabaseName, roleName, changes, cancellationToken)
-                    .ConfigureAwait(true);
+                var statements = PostgresGrantService.BuildStatements(roleName, changes);
+
+                try
+                {
+                    await _grants
+                        .ApplyGrantsAsync(Profile, password, DatabaseName, roleName, changes, cancellationToken)
+                        .ConfigureAwait(true);
+                    await WriteAuditAsync(roleName, statements, AuditOutcome.Success, null).ConfigureAwait(true);
+                }
+                catch (Exception roleEx)
+                {
+                    // Per-role failure is logged and re-thrown so the outer catch surfaces the
+                    // error and the remaining roles stay in cache for retry.
+                    await WriteAuditAsync(roleName, statements, AuditOutcome.Failed, roleEx.Message).ConfigureAwait(true);
+                    throw;
+                }
 
                 _pendingByRole.Remove(roleName);
                 totalChanges += changes.Count;
@@ -572,6 +600,40 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         {
             IsApplying = false;
             RaisePendingAggregates();
+        }
+    }
+
+    /// <summary>
+    /// Append one audit entry per role applied. Best-effort: if the audit store throws we
+    /// don't surface it to the user — the Apply itself already succeeded against the database
+    /// and that's the source of truth.
+    /// </summary>
+    private async Task WriteAuditAsync(
+        string roleName,
+        IReadOnlyList<string> statements,
+        AuditOutcome outcome,
+        string? errorMessage)
+    {
+        if (_auditLog is null)
+            return;
+        try
+        {
+            var entry = new AuditEntry(
+                Id: Guid.NewGuid(),
+                Timestamp: DateTimeOffset.UtcNow,
+                ProfileId: Profile.Id,
+                ProfileName: Profile.DisplayName,
+                DatabaseName: DatabaseName,
+                TargetRoleName: roleName,
+                Statements: statements,
+                Outcome: outcome,
+                ErrorMessage: errorMessage,
+                Executor: $"{Environment.UserName}@{Environment.MachineName}");
+            await _auditLog.AppendAsync(entry).ConfigureAwait(true);
+        }
+        catch
+        {
+            // Don't kill the apply path on audit failure — it's a side-channel.
         }
     }
 

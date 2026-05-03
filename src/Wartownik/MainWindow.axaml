@@ -233,6 +233,12 @@
                                                            HorizontalAlignment="Right"
                                                            Text="{Binding CountersText}"
                                                            IsVisible="{Binding HasCounters}" />
+                                                <TextBlock Classes="caption"
+                                                           Foreground="#64748B"
+                                                           HorizontalAlignment="Right"
+                                                           FontSize="11"
+                                                           Text="{Binding LastEditedText}"
+                                                           IsVisible="{Binding HasLastEdited}" />
                                                 <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
                                                     <Button Classes="icon edit"
                                                             Content="&#x270E;"
@@ -620,19 +626,25 @@
                                                                    Text="{Binding MetadataLine}"
                                                                    IsVisible="{Binding MetadataLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                                     </StackPanel>
-                                                    <Button Grid.Column="1"
-                                                            Padding="14,8"
-                                                            VerticalAlignment="Top"
-                                                            Command="{Binding TestConnectionCommand}"
-                                                            IsEnabled="{Binding !TestInProgress}">
-                                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                                            <TextBlock Text="&#xE721;"
-                                                                       FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
-                                                                       VerticalAlignment="Center" />
-                                                            <TextBlock Text="{Binding Localization[Common.Test]}"
-                                                                       VerticalAlignment="Center" />
-                                                        </StackPanel>
-                                                    </Button>
+                                                    <StackPanel Grid.Column="1"
+                                                                Orientation="Horizontal"
+                                                                Spacing="8"
+                                                                VerticalAlignment="Top">
+                                                        <Button Padding="14,8"
+                                                                Command="{Binding ExportYamlCommand}"
+                                                                Content="{Binding Localization[Common.ExportYaml]}" />
+                                                        <Button Padding="14,8"
+                                                                Command="{Binding TestConnectionCommand}"
+                                                                IsEnabled="{Binding !TestInProgress}">
+                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <TextBlock Text="&#xE721;"
+                                                                           FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                                                           VerticalAlignment="Center" />
+                                                                <TextBlock Text="{Binding Localization[Common.Test]}"
+                                                                           VerticalAlignment="Center" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </StackPanel>
                                                 </Grid>
 
                                                 <!-- Test status line under header (visible after Test connection click). -->
@@ -816,6 +828,8 @@
                                                                                         <TextBlock Text="{Binding RiskText}"
                                                                                                    FontSize="20"
                                                                                                    FontWeight="SemiBold"
+                                                                                                   Classes.risk-ok="{Binding IsRiskOk}"
+                                                                                                   Classes.risk-high="{Binding IsRiskHigh}"
                                                                                                    Foreground="#94A3B8"
                                                                                                    HorizontalAlignment="Center" />
                                                                                         <TextBlock Classes="caption"
@@ -827,17 +841,55 @@
                                                                         </StackPanel>
                                                                     </Grid>
 
-                                                                    <!-- AUDIT LOG (empty state until Iter 6 implements persistence). -->
+                                                                    <!-- AUDIT LOG — last 5 entries grouped by date. Empty state until first Apply runs. -->
                                                                     <StackPanel Spacing="6">
                                                                         <TextBlock Classes="eyebrow"
                                                                                    Text="{Binding Localization[Overview.RecentSection]}" />
                                                                         <TextBlock Classes="h2"
                                                                                    Text="{Binding Localization[Overview.RecentHeading]}" />
-                                                                        <Border Classes="card" Padding="20,28" Margin="0,8,0,32">
+
+                                                                        <!-- Empty state -->
+                                                                        <Border Classes="card" Padding="20,28" Margin="0,8,0,0"
+                                                                                IsVisible="{Binding RecentChanges.IsEmpty, FallbackValue=True}">
                                                                             <TextBlock Classes="subtle"
                                                                                        HorizontalAlignment="Center"
                                                                                        Text="{Binding Localization[Overview.AuditEmpty]}" />
                                                                         </Border>
+
+                                                                        <!-- Grouped entries (compact: only headline, time, outcome — no expand here) -->
+                                                                        <ItemsControl ItemsSource="{Binding RecentChanges.Groups}"
+                                                                                      Margin="0,8,0,32"
+                                                                                      IsVisible="{Binding RecentChanges.IsContentVisible, FallbackValue=False}">
+                                                                            <ItemsControl.ItemTemplate>
+                                                                                <DataTemplate DataType="vm:AuditDayGroup">
+                                                                                    <StackPanel Margin="0,0,0,10" Spacing="4">
+                                                                                        <TextBlock Classes="eyebrow" Text="{Binding Header}" />
+                                                                                        <ItemsControl ItemsSource="{Binding Entries}">
+                                                                                            <ItemsControl.ItemTemplate>
+                                                                                                <DataTemplate DataType="vm:AuditEntryViewModel">
+                                                                                                    <Border Classes="card" Padding="14,8" Margin="0,2,0,0">
+                                                                                                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                                                                                                            <TextBlock Grid.Column="0"
+                                                                                                                       Text="{Binding OutcomeGlyph}"
+                                                                                                                       Classes.audit-success="{Binding IsSuccess}"
+                                                                                                                       Classes.audit-failure="{Binding IsFailure}"
+                                                                                                                       FontWeight="Bold"
+                                                                                                                       Margin="0,0,10,0"
+                                                                                                                       VerticalAlignment="Center" />
+                                                                                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                                                                                <TextBlock Text="{Binding Headline}" Foreground="#F3F4F6" />
+                                                                                                                <TextBlock Classes="caption" Text="{Binding Subline}" />
+                                                                                                            </StackPanel>
+                                                                                                            <TextBlock Grid.Column="2" Classes="caption" Text="{Binding TimeText}" VerticalAlignment="Center" />
+                                                                                                        </Grid>
+                                                                                                    </Border>
+                                                                                                </DataTemplate>
+                                                                                            </ItemsControl.ItemTemplate>
+                                                                                        </ItemsControl>
+                                                                                    </StackPanel>
+                                                                                </DataTemplate>
+                                                                            </ItemsControl.ItemTemplate>
+                                                                        </ItemsControl>
                                                                     </StackPanel>
                                                                 </StackPanel>
                                                             </ScrollViewer>
@@ -1266,20 +1318,97 @@
                                                             </ContentControl>
                                                         </TabItem>
 
-                                                        <!-- ============ SQL log tab (placeholder) ============ -->
+                                                        <!-- ============ SQL log tab ============ -->
                                                         <TabItem Header="{Binding Localization[DatabaseTabs.SqlLog]}">
-                                                            <Border Classes="card"
-                                                                    Padding="32,40"
-                                                                    Margin="0,16,0,0">
-                                                                <StackPanel Spacing="8" HorizontalAlignment="Center">
-                                                                    <TextBlock Classes="h2"
-                                                                               HorizontalAlignment="Center"
-                                                                               Text="{Binding Localization[DatabaseTabs.SqlLogComingSoon]}" />
-                                                                    <TextBlock Classes="subtle"
-                                                                               HorizontalAlignment="Center"
-                                                                               Text="{Binding Localization[DatabaseTabs.SqlLogHint]}" />
-                                                                </StackPanel>
-                                                            </Border>
+                                                            <ContentControl Content="{Binding SqlLog}" Margin="0,16,0,0">
+                                                                <ContentControl.ContentTemplate>
+                                                                    <DataTemplate DataType="vm:AuditLogViewModel">
+                                                                        <Grid RowDefinitions="Auto,*">
+
+                                                                            <!-- Empty state when no entries -->
+                                                                            <Border Grid.Row="0"
+                                                                                    Classes="card"
+                                                                                    Padding="20,28"
+                                                                                    IsVisible="{Binding IsEmpty}">
+                                                                                <TextBlock Classes="subtle"
+                                                                                           HorizontalAlignment="Center"
+                                                                                           Text="{Binding $parent[ContentControl].((vm:DatabaseDetailsViewModel)DataContext).Localization[Overview.AuditEmpty]}" />
+                                                                            </Border>
+
+                                                                            <!-- Loading -->
+                                                                            <Border Grid.Row="0"
+                                                                                    Classes="card"
+                                                                                    Padding="20,28"
+                                                                                    IsVisible="{Binding IsLoading}">
+                                                                                <TextBlock Classes="subtle"
+                                                                                           HorizontalAlignment="Center"
+                                                                                           Text="{Binding $parent[ContentControl].((vm:DatabaseDetailsViewModel)DataContext).Localization[Common.Loading]}" />
+                                                                            </Border>
+
+                                                                            <!-- Day-grouped entries -->
+                                                                            <ScrollViewer Grid.Row="1"
+                                                                                          IsVisible="{Binding IsContentVisible}"
+                                                                                          HorizontalScrollBarVisibility="Disabled"
+                                                                                          VerticalScrollBarVisibility="Auto">
+                                                                                <ItemsControl ItemsSource="{Binding Groups}">
+                                                                                    <ItemsControl.ItemTemplate>
+                                                                                        <DataTemplate DataType="vm:AuditDayGroup">
+                                                                                            <StackPanel Margin="0,0,0,12" Spacing="6">
+                                                                                                <TextBlock Classes="eyebrow" Text="{Binding Header}" />
+                                                                                                <ItemsControl ItemsSource="{Binding Entries}">
+                                                                                                    <ItemsControl.ItemTemplate>
+                                                                                                        <DataTemplate DataType="vm:AuditEntryViewModel">
+                                                                                                            <Border Classes="card" Padding="14,10" Margin="0,4,0,0">
+                                                                                                                <StackPanel Spacing="6">
+                                                                                                                    <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                                                                                                                        <TextBlock Grid.Column="0"
+                                                                                                                                   Text="{Binding OutcomeGlyph}"
+                                                                                                                                   Classes.audit-success="{Binding IsSuccess}"
+                                                                                                                                   Classes.audit-failure="{Binding IsFailure}"
+                                                                                                                                   FontWeight="Bold"
+                                                                                                                                   FontSize="14"
+                                                                                                                                   Margin="0,0,10,0"
+                                                                                                                                   VerticalAlignment="Center" />
+                                                                                                                        <StackPanel Grid.Column="1" Spacing="2">
+                                                                                                                            <TextBlock Text="{Binding Headline}" Foreground="#F3F4F6" />
+                                                                                                                            <TextBlock Classes="caption" Text="{Binding Subline}" />
+                                                                                                                        </StackPanel>
+                                                                                                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                                                                                                            <TextBlock Classes="caption" Text="{Binding TimeText}" />
+                                                                                                                            <Button Classes="icon"
+                                                                                                                                    Padding="6,2"
+                                                                                                                                    Content="{Binding ChevronGlyph}"
+                                                                                                                                    Command="{Binding ToggleExpandCommand}" />
+                                                                                                                        </StackPanel>
+                                                                                                                    </Grid>
+                                                                                                                    <ItemsControl ItemsSource="{Binding Entry.Statements}"
+                                                                                                                                  IsVisible="{Binding IsExpanded}"
+                                                                                                                                  Margin="24,4,0,0">
+                                                                                                                        <ItemsControl.ItemTemplate>
+                                                                                                                            <DataTemplate>
+                                                                                                                                <TextBlock Text="{Binding}"
+                                                                                                                                           FontFamily="Consolas,Cascadia Mono,monospace"
+                                                                                                                                           FontSize="12"
+                                                                                                                                           Foreground="#94A3B8"
+                                                                                                                                           TextWrapping="Wrap"
+                                                                                                                                           Margin="0,2,0,2" />
+                                                                                                                            </DataTemplate>
+                                                                                                                        </ItemsControl.ItemTemplate>
+                                                                                                                    </ItemsControl>
+                                                                                                                </StackPanel>
+                                                                                                            </Border>
+                                                                                                        </DataTemplate>
+                                                                                                    </ItemsControl.ItemTemplate>
+                                                                                                </ItemsControl>
+                                                                                            </StackPanel>
+                                                                                        </DataTemplate>
+                                                                                    </ItemsControl.ItemTemplate>
+                                                                                </ItemsControl>
+                                                                            </ScrollViewer>
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </ContentControl.ContentTemplate>
+                                                            </ContentControl>
                                                         </TabItem>
                                                     </TabControl>
                                                 </Grid>

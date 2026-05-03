@@ -250,12 +250,6 @@
   <data name="DatabaseTabs.SqlLog" xml:space="preserve">
     <value>Log SQL</value>
   </data>
-  <data name="DatabaseTabs.PermissionsComingSoon" xml:space="preserve">
-    <value>Macierz uprawnień — wkrótce</value>
-  </data>
-  <data name="DatabaseTabs.PermissionsHint" xml:space="preserve">
-    <value>Konfigurator grantów schemat-po-schemacie z transakcyjnym apply.</value>
-  </data>
   <data name="Permissions.TargetUser" xml:space="preserve">
     <value>Docelowy użytkownik</value>
   </data>
@@ -310,9 +304,6 @@
   <data name="Permissions.PreviewSql" xml:space="preserve">
     <value>Podgląd SQL</value>
   </data>
-  <data name="Permissions.PreviewComingSoon" xml:space="preserve">
-    <value>Modal podglądu SQL — wkrótce (Iter 5d).</value>
-  </data>
   <data name="Permissions.PreviewTitleFormat" xml:space="preserve">
     <value>{0} oczekujących zmian na {1} rolach</value>
   </data>
@@ -330,12 +321,6 @@
   </data>
   <data name="Permissions.SuperuserBannerBody" xml:space="preserve">
     <value>Postgres pomija wszystkie sprawdzenia uprawnień dla superuserów. Poniższe komórki pokazują tylko jawne granty — ale w praktyce ten użytkownik ma już każde uprawnienie na każdym obiekcie. GRANT/REVOKE na superuserze to no-op.</value>
-  </data>
-  <data name="DatabaseTabs.SqlLogComingSoon" xml:space="preserve">
-    <value>Log SQL — wkrótce</value>
-  </data>
-  <data name="DatabaseTabs.SqlLogHint" xml:space="preserve">
-    <value>Historia każdej instrukcji wykonanej przez Wartownik na tej bazie.</value>
   </data>
   <data name="Overview.ConnectionSection" xml:space="preserve">
     <value>POŁĄCZENIE</value>
@@ -365,22 +350,22 @@
     <value>Schematy zdefiniowane przez użytkownika w tej bazie. Szybki test skali — 1 = mała, 30 = monolit modułowy.</value>
   </data>
   <data name="Overview.GrantsTooltip" xml:space="preserve">
-    <value>Istniejące nadania uprawnień na tej bazie (uzupełnione w Iter 5). Duże liczby zwykle oznaczają lata ad-hoc poprawek.</value>
+    <value>Istniejące nadania uprawnień na tej bazie — duże liczby zwykle oznaczają lata ad-hoc poprawek.</value>
   </data>
   <data name="Overview.PendingTooltip" xml:space="preserve">
-    <value>Zmiany wstępnie wprowadzone w macierzy uprawnień, jeszcze nie zaapplikowane (uzupełnione w Iter 5). &gt; 0 = masz tu niedokończoną robotę.</value>
+    <value>Zmiany wstępnie wprowadzone w macierzy uprawnień, jeszcze nie zaapplikowane. &gt; 0 = masz tu niedokończoną robotę.</value>
   </data>
   <data name="Overview.LoginUsers" xml:space="preserve">
     <value>userów</value>
   </data>
   <data name="Overview.LoginUsersTooltip" xml:space="preserve">
-    <value>Różne role z loginem mające jakiekolwiek uprawnienia tutaj (Iter 6). Duże liczby to anty-bałagan signal — za dużo osób ma dostęp.</value>
+    <value>Różne role z loginem na klastrze. Duże liczby to anty-bałagan signal — za dużo osób ma dostęp.</value>
   </data>
   <data name="Overview.LastApply" xml:space="preserve">
     <value>ostatnio</value>
   </data>
   <data name="Overview.LastApplyTooltip" xml:space="preserve">
-    <value>Kiedy Wartownik ostatnio coś tu zmienił (Iter 6). "nigdy" = ta baza nie jest jeszcze zarządzana przez Wartownik.</value>
+    <value>Kiedy Wartownik ostatnio coś tu zmienił. "nigdy" = ta baza nie jest jeszcze zarządzana przez Wartownik.</value>
   </data>
   <data name="Overview.NeverApplied" xml:space="preserve">
     <value>nigdy</value>
@@ -389,7 +374,13 @@
     <value>ryzyko</value>
   </data>
   <data name="Overview.RiskTooltip" xml:space="preserve">
-    <value>Heurystyczny score ryzyka (Iter 6). Świeci na czerwono gdy coś jest niebezpiecznie skonfigurowane — np. rola z loginem ma SUPERUSER, albo PUBLIC ma szeroki dostęp.</value>
+    <value>Heurystyczny score ryzyka. Świeci na czerwono gdy rola z loginem ma SUPERUSER — pomija każdy GRANT/REVOKE, który wykonujemy.</value>
+  </data>
+  <data name="Overview.RiskOk" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Overview.RiskHigh" xml:space="preserve">
+    <value>WYSOKIE</value>
   </data>
   <data name="Overview.RecentSection" xml:space="preserve">
     <value>OSTATNIE ZMIANY</value>
@@ -399,6 +390,15 @@
   </data>
   <data name="Overview.AuditEmpty" xml:space="preserve">
     <value>Brak zarejestrowanych zmian dla tej bazy.</value>
+  </data>
+  <data name="AuditLog.Today" xml:space="preserve">
+    <value>DZISIAJ</value>
+  </data>
+  <data name="AuditLog.Yesterday" xml:space="preserve">
+    <value>WCZORAJ</value>
+  </data>
+  <data name="Common.ExportYaml" xml:space="preserve">
+    <value>Eksport YAML</value>
   </data>
   <data name="Roles.Title" xml:space="preserve">
     <value>Role</value>

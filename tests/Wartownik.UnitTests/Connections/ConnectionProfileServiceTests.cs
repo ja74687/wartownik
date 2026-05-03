@@ -31,6 +31,26 @@ public class ConnectionProfileServiceTests
     }
 
     [Fact]
+    public async Task SaveAsync_stamps_LastEditedAt()
+    {
+        var profileStore = new InMemoryProfileStore();
+        var credentialStore = new InMemoryCredentialStore();
+        var sut = new ConnectionProfileService(profileStore, credentialStore);
+
+        var profile = SampleProfile();
+        Assert.Null(profile.LastEditedAt); // freshly Created profiles start without a stamp
+
+        var before = DateTimeOffset.UtcNow;
+        await sut.SaveAsync(profile, "secret");
+        var after = DateTimeOffset.UtcNow;
+
+        var saved = await profileStore.GetAsync(profile.Id);
+        Assert.NotNull(saved);
+        Assert.NotNull(saved!.LastEditedAt);
+        Assert.InRange(saved.LastEditedAt!.Value, before, after);
+    }
+
+    [Fact]
     public async Task SaveAsync_uses_distinct_credential_key_per_profile()
     {
         var profileStore = new InMemoryProfileStore();

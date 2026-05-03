@@ -457,6 +457,22 @@
         <Setter Property="Background" Value="#172033" />
     </Style>
 
+    <!-- Audit log entry outcome glyph: green tick for success, red ✕ for failure. -->
+    <Style Selector="TextBlock.audit-success">
+        <Setter Property="Foreground" Value="#10B981" />
+    </Style>
+    <Style Selector="TextBlock.audit-failure">
+        <Setter Property="Foreground" Value="#EF4444" />
+    </Style>
+
+    <!-- AT A GLANCE risk score colours. -->
+    <Style Selector="TextBlock.risk-ok">
+        <Setter Property="Foreground" Value="#10B981" />
+    </Style>
+    <Style Selector="TextBlock.risk-high">
+        <Setter Property="Foreground" Value="#EF4444" />
+    </Style>
+
     <!-- Tab badge — small pill counter inside tab header. -->
     <Style Selector="Border.badge">
         <Setter Property="Padding" Value="6,1" />

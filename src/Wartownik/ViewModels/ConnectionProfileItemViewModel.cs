@@ -123,6 +123,27 @@ public sealed class ConnectionProfileItemViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Relative-time stamp of the last save. Empty when the field is missing (older profile)
+    /// or never edited — that way an unsaved profile doesn't show a misleading "just now".
+    /// </summary>
+    public string LastEditedText
+    {
+        get
+        {
+            if (!Profile.LastEditedAt.HasValue)
+                return "";
+            var delta = DateTimeOffset.UtcNow - Profile.LastEditedAt.Value.ToUniversalTime();
+            if (delta.TotalSeconds < 60) return "edited just now";
+            if (delta.TotalMinutes < 60) return $"edited {(int)delta.TotalMinutes} min ago";
+            if (delta.TotalHours < 24) return $"edited {(int)delta.TotalHours} h ago";
+            if (delta.TotalDays < 30) return $"edited {(int)delta.TotalDays} d ago";
+            return "edited " + Profile.LastEditedAt.Value.ToLocalTime().ToString("yyyy-MM-dd");
+        }
+    }
+
+    public bool HasLastEdited => Profile.LastEditedAt.HasValue;
+
     internal static string ComputeInitials(string name)
     {
         if (string.IsNullOrWhiteSpace(name))

@@ -37,8 +37,13 @@ public sealed class ConnectionProfileService : IConnectionProfileService
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(password);
 
-        await _profileStore.SaveAsync(profile, cancellationToken).ConfigureAwait(false);
-        _credentialStore.Set(CredentialKey(profile.Id), password);
+        // Stamp every save so the profile list can show "edited 3 d ago" and the user can
+        // tell at a glance which profile they touched recently. Done at the service edge so
+        // the rule applies to both create and update paths.
+        var stamped = profile with { LastEditedAt = DateTimeOffset.UtcNow };
+
+        await _profileStore.SaveAsync(stamped, cancellationToken).ConfigureAwait(false);
+        _credentialStore.Set(CredentialKey(stamped.Id), password);
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)

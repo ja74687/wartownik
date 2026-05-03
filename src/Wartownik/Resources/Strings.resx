@@ -250,12 +250,6 @@
   <data name="DatabaseTabs.SqlLog" xml:space="preserve">
     <value>SQL log</value>
   </data>
-  <data name="DatabaseTabs.PermissionsComingSoon" xml:space="preserve">
-    <value>Permissions matrix — coming soon</value>
-  </data>
-  <data name="DatabaseTabs.PermissionsHint" xml:space="preserve">
-    <value>Schema-by-schema grant builder with transactional apply.</value>
-  </data>
   <data name="Permissions.TargetUser" xml:space="preserve">
     <value>Target user</value>
   </data>
@@ -310,9 +304,6 @@
   <data name="Permissions.PreviewSql" xml:space="preserve">
     <value>Preview SQL</value>
   </data>
-  <data name="Permissions.PreviewComingSoon" xml:space="preserve">
-    <value>Preview SQL modal — coming soon (Iter 5d).</value>
-  </data>
   <data name="Permissions.PreviewTitleFormat" xml:space="preserve">
     <value>{0} pending changes across {1} role(s)</value>
   </data>
@@ -330,12 +321,6 @@
   </data>
   <data name="Permissions.SuperuserBannerBody" xml:space="preserve">
     <value>Postgres bypasses every permission check for superusers. The cells below show explicit grants only — but in practice this user already has every privilege on every object. GRANT/REVOKE on a superuser is a no-op.</value>
-  </data>
-  <data name="DatabaseTabs.SqlLogComingSoon" xml:space="preserve">
-    <value>SQL log — coming soon</value>
-  </data>
-  <data name="DatabaseTabs.SqlLogHint" xml:space="preserve">
-    <value>History of every statement Wartownik executed against this database.</value>
   </data>
   <data name="Overview.ConnectionSection" xml:space="preserve">
     <value>CONNECTION</value>
@@ -365,22 +350,22 @@
     <value>User-defined schemas in this database. Quick scale check — 1 = small, 30 = modular monolith.</value>
   </data>
   <data name="Overview.GrantsTooltip" xml:space="preserve">
-    <value>Existing privilege grants on this database (filled in Iter 5). High counts usually mean years of ad-hoc tweaks.</value>
+    <value>Existing privilege grants on this database — high counts usually mean years of ad-hoc tweaks.</value>
   </data>
   <data name="Overview.PendingTooltip" xml:space="preserve">
-    <value>Changes staged in the Permissions matrix but not applied yet (filled in Iter 5). &gt; 0 = you have unfinished work here.</value>
+    <value>Changes staged in the Permissions matrix but not applied yet. &gt; 0 = you have unfinished work here.</value>
   </data>
   <data name="Overview.LoginUsers" xml:space="preserve">
     <value>users</value>
   </data>
   <data name="Overview.LoginUsersTooltip" xml:space="preserve">
-    <value>Distinct login roles with any privilege on this database (Iter 6). High counts are an anti-bałagan signal — too many people have access.</value>
+    <value>Distinct login roles on the cluster. High counts are an anti-bałagan signal — too many people have access.</value>
   </data>
   <data name="Overview.LastApply" xml:space="preserve">
     <value>last apply</value>
   </data>
   <data name="Overview.LastApplyTooltip" xml:space="preserve">
-    <value>When Wartownik last applied changes here (Iter 6). "never" means this database is unmanaged from Wartownik so far.</value>
+    <value>When Wartownik last applied changes here. "never" means this database is unmanaged from Wartownik so far.</value>
   </data>
   <data name="Overview.NeverApplied" xml:space="preserve">
     <value>never</value>
@@ -389,7 +374,13 @@
     <value>risk</value>
   </data>
   <data name="Overview.RiskTooltip" xml:space="preserve">
-    <value>Heuristic risk score (Iter 6). Flags red when something dangerous is configured — e.g. a login role with SUPERUSER, or PUBLIC granted broad access.</value>
+    <value>Heuristic risk score. Flags red when a login role on the cluster is also a SUPERUSER — they bypass every GRANT/REVOKE we issue.</value>
+  </data>
+  <data name="Overview.RiskOk" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Overview.RiskHigh" xml:space="preserve">
+    <value>HIGH</value>
   </data>
   <data name="Overview.RecentSection" xml:space="preserve">
     <value>RECENT CHANGES</value>
@@ -399,6 +390,15 @@
   </data>
   <data name="Overview.AuditEmpty" xml:space="preserve">
     <value>No changes recorded yet for this database.</value>
+  </data>
+  <data name="AuditLog.Today" xml:space="preserve">
+    <value>TODAY</value>
+  </data>
+  <data name="AuditLog.Yesterday" xml:space="preserve">
+    <value>YESTERDAY</value>
+  </data>
+  <data name="Common.ExportYaml" xml:space="preserve">
+    <value>Export YAML</value>
   </data>
   <data name="Roles.Title" xml:space="preserve">
     <value>Roles</value>
