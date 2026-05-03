@@ -18,7 +18,7 @@
         ExtendClientAreaTitleBarHeightHint="32"
         CanResize="True">
 
-    <Grid RowDefinitions="32,*">
+    <Grid RowDefinitions="32,Auto,*">
 
         <!-- Custom title bar with our own caption buttons. -->
         <Grid Grid.Row="0" Background="#0F172A" ColumnDefinitions="*,Auto">
@@ -45,8 +45,45 @@
             </StackPanel>
         </Grid>
 
+        <!-- Update banner — appears between title bar and content when a newer version is on
+             GitHub Releases. IsApplyingUpdate disables the buttons while the download/restart
+             cycle runs. -->
+        <Border Grid.Row="1"
+                Padding="20,10"
+                Background="#1A1F2E"
+                BorderBrush="#3B82F6"
+                BorderThickness="0,0,0,1"
+                IsVisible="{Binding HasAvailableUpdate}">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
+                <TextBlock Grid.Column="0"
+                           Text="&#xE777;"
+                           FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                           Foreground="#3B82F6"
+                           FontSize="16"
+                           Margin="0,0,12,0"
+                           VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock FontWeight="SemiBold"
+                               Foreground="#F3F4F6"
+                               Text="{Binding AvailableUpdateText}" />
+                    <TextBlock Classes="caption"
+                               Text="Install now to download and restart with the new version." />
+                </StackPanel>
+                <Button Grid.Column="2"
+                        Padding="14,6"
+                        Margin="0,0,8,0"
+                        Content="Later"
+                        Command="{Binding DismissUpdateCommand}" />
+                <Button Grid.Column="3"
+                        Padding="14,6"
+                        Classes="accent"
+                        Content="Install now"
+                        Command="{Binding InstallUpdateCommand}" />
+            </Grid>
+        </Border>
+
         <!-- Sidebar + content -->
-        <Grid Grid.Row="1" ColumnDefinitions="240,*">
+        <Grid Grid.Row="2" ColumnDefinitions="240,*">
 
             <!-- ============================================================ -->
             <!-- Sidebar — hierarchical breadcrumb routing                     -->
@@ -478,8 +515,12 @@
                                                                    Text="{Binding Localization[Users.Empty]}" />
                                                     </Border>
 
+                                                    <!-- Margin bottom on the list itself: Avalonia ScrollViewer Padding doesn't
+                                                         expand scroll extent, so the only way to leave breathing room under the
+                                                         last card is to add Margin to the content. -->
                                                     <ItemsControl ItemsSource="{Binding Users}"
-                                                                  IsVisible="{Binding HasUsers}">
+                                                                  IsVisible="{Binding HasUsers}"
+                                                                  Margin="0,0,0,32">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate DataType="vm:RoleItemViewModel">
                                                                 <Border Classes="card" Margin="0,0,0,10">
@@ -548,7 +589,8 @@
                                                     </Border>
 
                                                     <ItemsControl ItemsSource="{Binding Roles}"
-                                                                  IsVisible="{Binding HasRoles}">
+                                                                  IsVisible="{Binding HasRoles}"
+                                                                  Margin="0,0,0,32">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate DataType="vm:RoleItemViewModel">
                                                                 <Border Classes="card" Margin="0,0,0,10">

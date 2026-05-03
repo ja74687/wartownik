@@ -4,6 +4,7 @@ using System.Globalization;
 using Wartownik.Connections;
 using Wartownik.Dialogs;
 using Wartownik.Localization;
+using Wartownik.Updates;
 
 namespace Wartownik.ViewModels;
 
@@ -16,11 +17,14 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly IConfirmationDialog _confirmation;
     private readonly IConnectionTester _tester;
     private readonly IPostgresMetadataService _metadata;
+    private readonly IUpdateService? _updates;
     private readonly ProfileDetailsFactory _detailsFactory;
 
     private readonly List<ConnectionProfileItemViewModel> _allProfiles = new();
     private ProfileDetailsViewModel? _details;
     private string _searchFilter = "";
+    private UpdateInfo? _availableUpdate;
+    private bool _isApplyingUpdate;
 
     public ILocalizationService Localization { get; }
 
@@ -32,6 +36,8 @@ public sealed class MainWindowViewModel : ViewModelBase
     public AsyncRelayCommand OpenProfileCommand { get; }
     public AsyncRelayCommand BackToProfilesCommand { get; }
     public AsyncRelayCommand RefreshCommand { get; }
+    public AsyncRelayCommand InstallUpdateCommand { get; }
+    public RelayCommand DismissUpdateCommand { get; }
 
     public MainWindowViewModel(
         ILocalizationService localization,
@@ -40,7 +46,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         IConfirmationDialog confirmation,
         IConnectionTester tester,
         IPostgresMetadataService metadata,
-        ProfileDetailsFactory detailsFactory)
+        ProfileDetailsFactory detailsFactory,
+        IUpdateService? updates = null)
     {
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(profiles);
@@ -56,6 +63,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         _confirmation = confirmation;
         _tester = tester;
         _metadata = metadata;
+        _updates = updates;
         _detailsFactory = detailsFactory;
 
         AddProfileCommand = new AsyncRelayCommand(AddProfileAsync);
@@ -64,6 +72,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         OpenProfileCommand = new AsyncRelayCommand(parameter => OpenProfileAsync(parameter));
         BackToProfilesCommand = new AsyncRelayCommand(BackToProfilesAsync);
         RefreshCommand = new AsyncRelayCommand(LoadProfilesAsync);
+        InstallUpdateCommand = new AsyncRelayCommand(InstallUpdateAsync, () => _availableUpdate is not null && !_isApplyingUpdate);
+        DismissUpdateCommand = new RelayCommand(() => AvailableUpdate = null);
 
         Localization.PropertyChanged += OnLocalizationChanged;
     }
@@ -152,6 +162,82 @@ public sealed class MainWindowViewModel : ViewModelBase
         // Background refresh of status + counters per profile (fire-and-forget).
         foreach (var item in _allProfiles)
             _ = RefreshProfileMetaAsync(item);
+
+        // Auto-update check fires once per app launch when there's a real install
+        // backing it. In dev runs IsInstalled is false and this is a no-op.
+        _ = CheckForUpdatesAsync();
+    }
+
+    public UpdateInfo? AvailableUpdate
+    {
+        get => _availableUpdate;
+        private set
+        {
+            if (SetField(ref _availableUpdate, value))
+            {
+                RaisePropertyChanged(nameof(HasAvailableUpdate));
+                RaisePropertyChanged(nameof(AvailableUpdateText));
+                InstallUpdateCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool HasAvailableUpdate => _availableUpdate is not null;
+    public string AvailableUpdateText =>
+        _availableUpdate is null ? "" : $"Wartownik {_availableUpdate.TargetVersion} is available";
+
+    public bool IsApplyingUpdate
+    {
+        get => _isApplyingUpdate;
+        private set
+        {
+            if (SetField(ref _isApplyingUpdate, value))
+                InstallUpdateCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>
+    /// Background-check the GitHub release feed and surface the result via AvailableUpdate.
+    /// Failures (offline, GitHub down, rate-limited) are swallowed — the user sees no banner
+    /// and can keep working; we'll try again on next launch.
+    /// </summary>
+    public async Task CheckForUpdatesAsync()
+    {
+        if (_updates is null || !_updates.IsInstalled)
+            return;
+        try
+        {
+            AvailableUpdate = await _updates.CheckForUpdatesAsync().ConfigureAwait(true);
+        }
+        catch
+        {
+            // ignore — non-fatal
+        }
+    }
+
+    /// <summary>
+    /// Download + apply the staged update, then restart the app. The user explicitly clicked
+    /// Install, so the restart is part of the contract — no separate confirmation.
+    /// </summary>
+    private async Task InstallUpdateAsync()
+    {
+        if (_updates is null || _availableUpdate is null)
+            return;
+        IsApplyingUpdate = true;
+        try
+        {
+            await _updates.DownloadAsync(_availableUpdate).ConfigureAwait(true);
+            _updates.ApplyAndRestart(_availableUpdate);
+        }
+        catch
+        {
+            // If anything went wrong, drop the banner so we don't show a half-broken state.
+            AvailableUpdate = null;
+        }
+        finally
+        {
+            IsApplyingUpdate = false;
+        }
     }
 
     private void ApplyFilter()
