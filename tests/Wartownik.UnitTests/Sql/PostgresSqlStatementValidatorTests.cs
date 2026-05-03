@@ -237,13 +237,34 @@ public class PostgresSqlStatementValidatorTests
 
     [Theory]
     [InlineData("GIBBERISH")]
-    [InlineData("WITH x AS (SELECT 1) SELECT * FROM x")]
     [InlineData("EXPLAIN SELECT 1")]
     [InlineData("BEGIN")]
     [InlineData("COMMIT")]
     [InlineData("ROLLBACK")]
     [InlineData("SAVEPOINT s")]
     public void Default_denies_unknown_or_unsupported(string sql)
+    {
+        var result = _validator.Validate(sql);
+        Assert.False(result.IsAllowed);
+    }
+
+    // ---------- WITH / CTE support (Iter 5) ----------
+
+    [Theory]
+    [InlineData("WITH a AS (SELECT oid FROM pg_catalog.pg_roles) SELECT * FROM a")]
+    [InlineData("WITH a AS (SELECT oid FROM pg_roles), b AS (SELECT oid FROM pg_namespace) SELECT * FROM a JOIN b ON a.oid = b.oid")]
+    [InlineData("WITH RECURSIVE t AS (SELECT 1 FROM pg_catalog.pg_database) SELECT * FROM t")]
+    public void Allows_select_with_cte_when_all_sources_are_catalogs_or_aliases(string sql)
+    {
+        var result = _validator.Validate(sql);
+        Assert.True(result.IsAllowed, result.RejectionReason);
+        Assert.Equal(SqlStatementCategory.ReadMetadata, result.Category);
+    }
+
+    [Theory]
+    [InlineData("WITH evil AS (SELECT * FROM users) SELECT * FROM evil")]
+    [InlineData("WITH a AS (SELECT 1 FROM pg_roles) SELECT * FROM customer_data")]
+    public void Rejects_cte_with_user_table_source(string sql)
     {
         var result = _validator.Validate(sql);
         Assert.False(result.IsAllowed);

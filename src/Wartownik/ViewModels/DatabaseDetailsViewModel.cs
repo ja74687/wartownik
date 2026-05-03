@@ -9,6 +9,7 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
 {
     private readonly IConnectionProfileService _profiles;
     private readonly IPostgresMetadataService _metadata;
+    private readonly IPostgresGrantService? _grants;
     private readonly IConnectionTester? _tester;
 
     private bool _isLoading;
@@ -16,6 +17,8 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
     private string? _testStatus;
     private bool _testInProgress;
     private DatabaseSummary _summary;
+    private int _selectedTabIndex;
+    private PermissionsMatrixViewModel? _permissionsMatrix;
 
     public ConnectionProfile Profile { get; }
     public string DatabaseName => _summary.Name;
@@ -31,7 +34,8 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
         ILocalizationService localization,
         IConnectionProfileService profiles,
         IPostgresMetadataService metadata,
-        IConnectionTester? tester = null)
+        IConnectionTester? tester = null,
+        IPostgresGrantService? grants = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(summary);
@@ -46,6 +50,7 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
         _profiles = profiles;
         _metadata = metadata;
         _tester = tester;
+        _grants = grants;
 
         Schemas.CollectionChanged += (_, _) =>
         {
@@ -108,6 +113,51 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
     public bool IsContentVisible => !IsLoading && !HasError;
 
     public string Endpoint => $"{Profile.Host}:{Profile.Port} / {DatabaseName} / {Profile.Username}";
+
+    /// <summary>
+    /// Bound to TabControl.SelectedIndex on the database workspace. Tab order:
+    /// 0 = Overview, 1 = Schemas, 2 = Permissions, 3 = SQL log.
+    /// We trigger the first PermissionsMatrix load lazily when the user clicks the tab so
+    /// we don't fetch every role's grants for users who never open the matrix.
+    /// </summary>
+    public int SelectedTabIndex
+    {
+        get => _selectedTabIndex;
+        set
+        {
+            if (SetField(ref _selectedTabIndex, value) && value == 2)
+                _ = EnsurePermissionsLoadedAsync();
+        }
+    }
+
+    public PermissionsMatrixViewModel? PermissionsMatrix
+    {
+        get => _permissionsMatrix;
+        private set
+        {
+            if (SetField(ref _permissionsMatrix, value))
+                RaisePropertyChanged(nameof(HasPermissionsMatrix));
+        }
+    }
+
+    public bool HasPermissionsMatrix => _permissionsMatrix is not null;
+
+    private Task EnsurePermissionsLoadedAsync()
+    {
+        if (_grants is null)
+            return Task.CompletedTask;
+
+        // First time the user opens the tab — build the VM and kick off its load.
+        // Subsequent visits are no-ops; the user can still hit the matrix's own refresh path.
+        if (_permissionsMatrix is null)
+        {
+            var matrix = new PermissionsMatrixViewModel(
+                Profile, DatabaseName, Localization, _profiles, _metadata, _grants);
+            PermissionsMatrix = matrix;
+            return matrix.LoadAsync();
+        }
+        return Task.CompletedTask;
+    }
 
     // -- Header / At-a-glance computed --
 

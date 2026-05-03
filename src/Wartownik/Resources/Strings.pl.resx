@@ -256,6 +256,72 @@
   <data name="DatabaseTabs.PermissionsHint" xml:space="preserve">
     <value>Konfigurator grantów schemat-po-schemacie z transakcyjnym apply.</value>
   </data>
+  <data name="Permissions.TargetUser" xml:space="preserve">
+    <value>Docelowy użytkownik</value>
+  </data>
+  <data name="Permissions.NoLoginRoles" xml:space="preserve">
+    <value>Brak ról z loginem — utwórz pierwszą w zakładce Users w profilu.</value>
+  </data>
+  <data name="Permissions.NoSchemas" xml:space="preserve">
+    <value>Brak schem zdefiniowanych przez użytkownika w tej bazie.</value>
+  </data>
+  <data name="Permissions.ColumnSchema" xml:space="preserve">
+    <value>SCHEMA</value>
+  </data>
+  <data name="Permissions.ColumnUsage" xml:space="preserve">
+    <value>USAGE</value>
+  </data>
+  <data name="Permissions.ColumnCreate" xml:space="preserve">
+    <value>CREATE</value>
+  </data>
+  <data name="Permissions.ColumnSelect" xml:space="preserve">
+    <value>SELECT</value>
+  </data>
+  <data name="Permissions.ColumnInsert" xml:space="preserve">
+    <value>INSERT</value>
+  </data>
+  <data name="Permissions.ColumnUpdate" xml:space="preserve">
+    <value>UPDATE</value>
+  </data>
+  <data name="Permissions.ColumnDelete" xml:space="preserve">
+    <value>DELETE</value>
+  </data>
+  <data name="Permissions.ColumnAll" xml:space="preserve">
+    <value>ALL</value>
+  </data>
+  <data name="Permissions.LegendGranted" xml:space="preserve">
+    <value>nadane</value>
+  </data>
+  <data name="Permissions.LegendNotGranted" xml:space="preserve">
+    <value>nie nadane</value>
+  </data>
+  <data name="Permissions.LegendPendingGrant" xml:space="preserve">
+    <value>oczekuje nadania</value>
+  </data>
+  <data name="Permissions.LegendPendingRevoke" xml:space="preserve">
+    <value>oczekuje odebrania</value>
+  </data>
+  <data name="Permissions.AppliedFormat" xml:space="preserve">
+    <value>Zastosowano {0} zmian(y).</value>
+  </data>
+  <data name="Permissions.Discard" xml:space="preserve">
+    <value>Odrzuć</value>
+  </data>
+  <data name="Permissions.PreviewSql" xml:space="preserve">
+    <value>Podgląd SQL</value>
+  </data>
+  <data name="Permissions.PreviewComingSoon" xml:space="preserve">
+    <value>Modal podglądu SQL — wkrótce (Iter 5d).</value>
+  </data>
+  <data name="Permissions.Apply" xml:space="preserve">
+    <value>Zastosuj</value>
+  </data>
+  <data name="Permissions.ApplyAll" xml:space="preserve">
+    <value>Zastosuj wszystkie</value>
+  </data>
+  <data name="Permissions.PerRoleHint" xml:space="preserve">
+    <value>Zastosuj lub odrzuć każdą rolę osobno — albo użyj przycisków powyżej dla wszystkich naraz.</value>
+  </data>
   <data name="DatabaseTabs.SqlLogComingSoon" xml:space="preserve">
     <value>Log SQL — wkrótce</value>
   </data>

@@ -44,6 +44,7 @@ public static class Bootstrapper
         services.AddSingleton<IConnectionTester, PostgresConnectionTester>();
         services.AddSingleton<IPostgresMetadataService, PostgresMetadataService>();
         services.AddSingleton<IPostgresRoleAdminService, PostgresRoleAdminService>();
+        services.AddSingleton<IPostgresGrantService, PostgresGrantService>();
         services.AddSingleton<IRoleEditor, AvaloniaRoleEditor>();
         services.AddSingleton<IConfirmationDialog, AvaloniaConfirmationDialog>();
 
@@ -63,7 +64,8 @@ public static class Bootstrapper
                 sp.GetRequiredService<ILocalizationService>(),
                 sp.GetRequiredService<IConnectionProfileService>(),
                 sp.GetRequiredService<IPostgresMetadataService>(),
-                sp.GetRequiredService<IConnectionTester>()));
+                sp.GetRequiredService<IConnectionTester>(),
+                sp.GetRequiredService<IPostgresGrantService>()));
 
         services.AddSingleton<MainWindowViewModel.ProfileDetailsFactory>(sp =>
             profile => new ProfileDetailsViewModel(

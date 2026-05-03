@@ -17,6 +17,23 @@ public sealed class PostgresSqlStatementValidator : ISqlStatementValidator
     private static readonly Regex SelectPattern =
         new(@"^SELECT\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Read-only CTE statements start with WITH [RECURSIVE]. They may chain into a final SELECT,
+    // and we treat each CTE alias as a valid FROM source for the rest of the statement.
+    private static readonly Regex WithCtePattern =
+        new(@"^WITH\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // Captures the FIRST CTE alias right after WITH [RECURSIVE]: "WITH foo AS (...)".
+    private static readonly Regex FirstCteNamePattern =
+        new(@"^WITH(?:\s+RECURSIVE)?\s+([A-Za-z_]\w*)\s+AS\s*\(",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // Captures every subsequent CTE alias: "), bar AS (".
+    // The leading ")" anchors us to the close of a previous CTE body, which avoids
+    // false positives like "SELECT a, b FROM …" or "CAST(x AS int)".
+    private static readonly Regex NextCteNamePattern =
+        new(@"\)\s*,\s*([A-Za-z_]\w*)\s+AS\s*\(",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private static readonly Regex FromOrJoinSourcePattern =
         new(@"\b(FROM|JOIN)\s+([A-Za-z_][\w""\.]*)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -43,7 +60,7 @@ public sealed class PostgresSqlStatementValidator : ISqlStatementValidator
         if (GrantRevokePattern.IsMatch(normalized))
             return SqlValidationResult.Allow(SqlStatementCategory.GrantRevoke);
 
-        if (SelectPattern.IsMatch(normalized))
+        if (SelectPattern.IsMatch(normalized) || WithCtePattern.IsMatch(normalized))
             return ValidateSelect(normalized);
 
         var leadingToken = normalized.Split([' ', '\t', '\n', '\r'], 2)[0];
@@ -52,6 +69,16 @@ public sealed class PostgresSqlStatementValidator : ISqlStatementValidator
 
     private static SqlValidationResult ValidateSelect(string normalized)
     {
+        // Collect every CTE alias declared in a WITH clause. Each alias becomes a permitted
+        // FROM/JOIN source so chained CTEs validate cleanly without us having to parse the
+        // whole statement.
+        var cteNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var firstCte = FirstCteNamePattern.Match(normalized);
+        if (firstCte.Success)
+            cteNames.Add(firstCte.Groups[1].Value);
+        foreach (Match m in NextCteNamePattern.Matches(normalized))
+            cteNames.Add(m.Groups[1].Value);
+
         var sources = FromOrJoinSourcePattern.Matches(normalized);
         if (sources.Count == 0)
             return SqlValidationResult.Reject("SELECT without FROM is not a metadata read");
@@ -59,9 +86,9 @@ public sealed class PostgresSqlStatementValidator : ISqlStatementValidator
         foreach (Match match in sources)
         {
             var source = match.Groups[2].Value.Trim('"');
-            if (!IsSystemCatalogSource(source))
+            if (!IsSystemCatalogSource(source) && !cteNames.Contains(source))
                 return SqlValidationResult.Reject(
-                    $"SELECT source '{source}' is not a system catalog (pg_*, pg_catalog.*, information_schema.*)");
+                    $"SELECT source '{source}' is not a system catalog (pg_*, pg_catalog.*, information_schema.*) or CTE alias");
         }
 
         return SqlValidationResult.Allow(SqlStatementCategory.ReadMetadata);
