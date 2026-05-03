@@ -26,5 +26,8 @@
     <PackageReference Include="Npgsql" Version="10.0.2" />
     <PackageReference Include="Semi.Avalonia" Version="12.0.1" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.7" />
+    <!-- Installer + auto-update. Free, OSS (MIT), publishes to GitHub Releases.
+         See docs/INSTALLER.md for the release workflow. -->
+    <PackageReference Include="Velopack" Version="0.0.1053" />
   </ItemGroup>
 </Project>

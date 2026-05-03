@@ -1,0 +1,79 @@
+# Builds Wartownik on every `v*` tag push, packs with Velopack, and publishes to a
+# GitHub Release. Only Windows for now — extend the matrix when macOS/Linux builds
+# are needed.
+#
+# To cut a release:
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# The workflow reads the version from the tag (strips the leading `v`).
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write  # needed to create / update GitHub Releases
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Velopack reads git history for delta versioning
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Extract version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: |
+          dotnet restore src/Wartownik/Wartownik.csproj
+          dotnet restore tests/Wartownik.UnitTests/Wartownik.UnitTests.csproj
+
+      - name: Test
+        run: dotnet test tests/Wartownik.UnitTests/Wartownik.UnitTests.csproj --no-restore -c Release
+
+      - name: Publish (win-x64, self-contained)
+        run: |
+          dotnet publish src/Wartownik/Wartownik.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained `
+            -o publish/win-x64
+
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
+
+      - name: Pack with Velopack
+        run: |
+          vpk pack `
+            --packId Wartownik `
+            --packVersion ${{ steps.version.outputs.version }} `
+            --packDir publish/win-x64 `
+            --mainExe Wartownik.exe `
+            --packTitle "Wartownik" `
+            --packAuthors "SofTime - Piotr Krakowski"
+
+      - name: Upload to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          vpk upload github `
+            --repoUrl https://github.com/ja74687/wartownik `
+            --tag ${{ github.ref_name }} `
+            --releaseName "Wartownik ${{ steps.version.outputs.version }}" `
+            --token $env:GITHUB_TOKEN `
+            --publish

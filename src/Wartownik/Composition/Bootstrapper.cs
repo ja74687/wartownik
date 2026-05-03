@@ -7,6 +7,7 @@ using Wartownik.Dialogs;
 using Wartownik.Localization;
 using Wartownik.Postgres;
 using Wartownik.Sql;
+using Wartownik.Updates;
 using Wartownik.ViewModels;
 using Wartownik.Yaml;
 
@@ -52,6 +53,7 @@ public static class Bootstrapper
         services.AddSingleton<IPostgresGrantService, PostgresGrantService>();
         services.AddSingleton<IYamlExporter, YamlExporter>();
         services.AddSingleton<IYamlExportDialog, AvaloniaYamlExportDialog>();
+        services.AddSingleton<IUpdateService, VelopackUpdateService>();
         services.AddSingleton<IRoleEditor, AvaloniaRoleEditor>();
         services.AddSingleton<IConfirmationDialog, AvaloniaConfirmationDialog>();
         services.AddSingleton<IPreviewSqlDialog, AvaloniaPreviewSqlDialog>();
