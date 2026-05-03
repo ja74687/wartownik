@@ -57,12 +57,13 @@ public static class Bootstrapper
         services.AddTransient<ConnectionProfileEditorViewModel>();
         services.AddTransient<RoleEditorViewModel>();
         services.AddSingleton<ProfileDetailsViewModel.DatabaseDetailsFactory>(sp =>
-            (profile, dbName) => new DatabaseDetailsViewModel(
+            (profile, summary) => new DatabaseDetailsViewModel(
                 profile,
-                dbName,
+                summary,
                 sp.GetRequiredService<ILocalizationService>(),
                 sp.GetRequiredService<IConnectionProfileService>(),
-                sp.GetRequiredService<IPostgresMetadataService>()));
+                sp.GetRequiredService<IPostgresMetadataService>(),
+                sp.GetRequiredService<IConnectionTester>()));
 
         services.AddSingleton<MainWindowViewModel.ProfileDetailsFactory>(sp =>
             profile => new ProfileDetailsViewModel(

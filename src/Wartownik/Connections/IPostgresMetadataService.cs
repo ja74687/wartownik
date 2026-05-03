@@ -19,7 +19,11 @@ public interface IPostgresMetadataService
         CancellationToken cancellationToken = default);
 }
 
-public sealed record DatabaseSummary(string Name);
+public sealed record DatabaseSummary(
+    string Name,
+    string? Owner = null,
+    string? ServerVersion = null,
+    long? SizeBytes = null);
 
 public sealed record RoleSummary(
     string Name,

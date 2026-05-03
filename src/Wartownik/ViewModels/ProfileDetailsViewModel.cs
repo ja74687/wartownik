@@ -7,7 +7,7 @@ namespace Wartownik.ViewModels;
 
 public sealed class ProfileDetailsViewModel : ViewModelBase
 {
-    public delegate DatabaseDetailsViewModel DatabaseDetailsFactory(ConnectionProfile profile, string databaseName);
+    public delegate DatabaseDetailsViewModel DatabaseDetailsFactory(ConnectionProfile profile, DatabaseSummary summary);
 
     private readonly IConnectionProfileService _profiles;
     private readonly IPostgresMetadataService _metadata;
@@ -147,7 +147,14 @@ public sealed class ProfileDetailsViewModel : ViewModelBase
                 .ConfigureAwait(true);
 
             foreach (var summary in databases)
-                Databases.Add(new DatabaseItemViewModel(summary));
+            {
+                var item = new DatabaseItemViewModel(summary, Localization)
+                {
+                    LastSyncAt = DateTimeOffset.UtcNow,
+                };
+                Databases.Add(item);
+                _ = RefreshDatabaseMetaAsync(item, password);
+            }
 
             var roles = await _metadata
                 .ListRolesAsync(Profile, password, cancellationToken)
@@ -170,6 +177,24 @@ public sealed class ProfileDetailsViewModel : ViewModelBase
         {
             IsLoading = false;
             RaiseListSnapshotProperties();
+        }
+    }
+
+    private async Task RefreshDatabaseMetaAsync(DatabaseItemViewModel item, string password)
+    {
+        // Best-effort per-database metadata fetch in background. We don't surface errors here —
+        // pills just stay hidden if the user lacks privileges or the connection fails.
+        try
+        {
+            var schemas = await _metadata
+                .ListSchemasAsync(Profile, password, item.Name)
+                .ConfigureAwait(true);
+            item.SchemaCount = schemas.Count;
+            item.LastSyncAt = DateTimeOffset.UtcNow;
+        }
+        catch
+        {
+            // swallow — leave pill hidden
         }
     }
 
@@ -201,7 +226,7 @@ public sealed class ProfileDetailsViewModel : ViewModelBase
         if (parameter is not DatabaseItemViewModel item)
             return;
 
-        var dbVm = _databaseFactory(Profile, item.Name);
+        var dbVm = _databaseFactory(Profile, item.Summary);
         SelectedDatabase = dbVm;
         await dbVm.LoadAsync().ConfigureAwait(true);
     }

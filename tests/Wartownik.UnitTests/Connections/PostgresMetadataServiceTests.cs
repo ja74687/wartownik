@@ -27,9 +27,50 @@ public class PostgresMetadataServiceTests
         Assert.Equal(new[] { "alpha", "beta" }, result.Select(d => d.Name));
         Assert.Single(session.QueryCalls);
         Assert.Contains("pg_database", session.QueryCalls[0]);
-        Assert.Contains("NOT datistemplate", session.QueryCalls[0]);
+        Assert.Contains("datistemplate", session.QueryCalls[0]);
         Assert.Contains("datallowconn", session.QueryCalls[0]);
-        Assert.Contains("ORDER BY datname", session.QueryCalls[0]);
+        Assert.Contains("ORDER BY", session.QueryCalls[0]);
+        Assert.Contains("datname", session.QueryCalls[0]);
+        // Iter 3: card needs owner / server version / size
+        Assert.Contains("pg_get_userbyid", session.QueryCalls[0]);
+        Assert.Contains("pg_database_size", session.QueryCalls[0]);
+        Assert.Contains("server_version", session.QueryCalls[0]);
+    }
+
+    [Fact]
+    public async Task ListDatabasesAsync_returns_owner_size_and_version_when_present()
+    {
+        var session = new RecordingSession(databaseSummaries: new[]
+        {
+            new DatabaseSummary("mydb", Owner: "postgres", ServerVersion: "16.2", SizeBytes: 432013312L),
+        });
+        var sut = new PostgresMetadataService(new FakeFactory(session));
+
+        var result = await sut.ListDatabasesAsync(SampleProfile(), "pwd");
+
+        var db = Assert.Single(result);
+        Assert.Equal("mydb", db.Name);
+        Assert.Equal("postgres", db.Owner);
+        Assert.Equal("16.2", db.ServerVersion);
+        Assert.Equal(432013312L, db.SizeBytes);
+    }
+
+    [Fact]
+    public async Task ListDatabasesAsync_returns_null_size_when_db_not_connectable_for_user()
+    {
+        // pg_database_size returns NULL via the CASE WHEN guard if the user lacks CONNECT privilege.
+        var session = new RecordingSession(databaseSummaries: new[]
+        {
+            new DatabaseSummary("locked_db", Owner: "other", ServerVersion: "16.2", SizeBytes: null),
+        });
+        var sut = new PostgresMetadataService(new FakeFactory(session));
+
+        var result = await sut.ListDatabasesAsync(SampleProfile(), "pwd");
+
+        var db = Assert.Single(result);
+        Assert.Equal("locked_db", db.Name);
+        Assert.Null(db.SizeBytes);
+        Assert.Equal("other", db.Owner);
     }
 
     [Fact]
@@ -222,16 +263,19 @@ public class PostgresMetadataServiceTests
 
     private sealed class RecordingSession : IPostgresSession
     {
-        private readonly IReadOnlyList<string> _databases;
+        private readonly IReadOnlyList<DatabaseSummary> _databases;
         private readonly IReadOnlyList<RoleSummary> _roles;
         private readonly IReadOnlyList<string> _schemas;
 
         public RecordingSession(
             IReadOnlyList<string>? databases = null,
             IReadOnlyList<RoleSummary>? roles = null,
-            IReadOnlyList<string>? schemas = null)
+            IReadOnlyList<string>? schemas = null,
+            IReadOnlyList<DatabaseSummary>? databaseSummaries = null)
         {
-            _databases = databases ?? Array.Empty<string>();
+            _databases = databaseSummaries ?? (databases ?? Array.Empty<string>())
+                .Select(name => new DatabaseSummary(name))
+                .ToArray();
             _roles = roles ?? Array.Empty<RoleSummary>();
             _schemas = schemas ?? Array.Empty<string>();
         }
@@ -248,8 +292,8 @@ public class PostgresMetadataServiceTests
             var rows = new List<TRow>();
             if (sql.Contains("pg_database", StringComparison.OrdinalIgnoreCase))
             {
-                foreach (var name in _databases)
-                    rows.Add(map(new SingleStringReader(name)));
+                foreach (var summary in _databases)
+                    rows.Add(map(new DatabaseRowReader(summary)));
             }
             else if (sql.Contains("pg_roles", StringComparison.OrdinalIgnoreCase))
             {
@@ -316,6 +360,78 @@ public class PostgresMetadataServiceTests
         public override string GetName(int ordinal) => "datname";
         public override int GetOrdinal(string name) => 0;
         public override object GetValue(int ordinal) => _value;
+    }
+
+    private sealed class DatabaseRowReader : StubReader
+    {
+        private readonly DatabaseSummary _summary;
+        public DatabaseRowReader(DatabaseSummary summary) => _summary = summary;
+
+        public override int FieldCount => 4;
+
+        public override bool GetBoolean(int ordinal) => throw new NotImplementedException();
+
+        public override bool IsDBNull(int ordinal) => ordinal switch
+        {
+            0 => false,
+            1 => _summary.Owner is null,
+            2 => !_summary.SizeBytes.HasValue,
+            3 => _summary.ServerVersion is null,
+            _ => true,
+        };
+
+        public override string GetString(int ordinal) => ordinal switch
+        {
+            0 => _summary.Name,
+            1 => _summary.Owner ?? throw new InvalidOperationException("owner is null; check IsDBNull"),
+            3 => _summary.ServerVersion ?? throw new InvalidOperationException("version is null; check IsDBNull"),
+            _ => throw new IndexOutOfRangeException(),
+        };
+
+        public override long GetInt64(int ordinal) => ordinal == 2
+            ? _summary.SizeBytes ?? throw new InvalidOperationException("size is null; check IsDBNull")
+            : throw new IndexOutOfRangeException();
+
+        public override string GetDataTypeName(int ordinal) => ordinal switch
+        {
+            0 or 1 or 3 => "text",
+            2 => "bigint",
+            _ => throw new IndexOutOfRangeException(),
+        };
+
+        public override Type GetFieldType(int ordinal) => ordinal switch
+        {
+            0 or 1 or 3 => typeof(string),
+            2 => typeof(long),
+            _ => throw new IndexOutOfRangeException(),
+        };
+
+        public override string GetName(int ordinal) => ordinal switch
+        {
+            0 => "datname",
+            1 => "owner",
+            2 => "size_bytes",
+            3 => "server_version",
+            _ => throw new IndexOutOfRangeException(),
+        };
+
+        public override int GetOrdinal(string name) => name switch
+        {
+            "datname" => 0,
+            "owner" => 1,
+            "size_bytes" => 2,
+            "server_version" => 3,
+            _ => throw new IndexOutOfRangeException(),
+        };
+
+        public override object GetValue(int ordinal) => ordinal switch
+        {
+            0 => _summary.Name,
+            1 => (object?)_summary.Owner ?? DBNull.Value,
+            2 => (object?)_summary.SizeBytes ?? DBNull.Value,
+            3 => (object?)_summary.ServerVersion ?? DBNull.Value,
+            _ => throw new IndexOutOfRangeException(),
+        };
     }
 
     private sealed class RoleRowReader : StubReader

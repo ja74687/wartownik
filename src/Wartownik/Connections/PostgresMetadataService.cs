@@ -4,8 +4,18 @@ namespace Wartownik.Connections;
 
 public sealed class PostgresMetadataService : IPostgresMetadataService
 {
-    private const string ListDatabasesSql =
-        "SELECT datname FROM pg_database WHERE NOT datistemplate AND datallowconn ORDER BY datname";
+    private const string ListDatabasesSql = """
+        SELECT
+            d.datname,
+            pg_catalog.pg_get_userbyid(d.datdba) AS owner,
+            CASE WHEN pg_catalog.has_database_privilege(d.datname, 'CONNECT')
+                 THEN pg_catalog.pg_database_size(d.datname)
+                 ELSE NULL END AS size_bytes,
+            current_setting('server_version') AS server_version
+        FROM pg_catalog.pg_database d
+        WHERE NOT d.datistemplate AND d.datallowconn
+        ORDER BY d.datname
+        """;
 
     private const string ListRolesSql =
         "SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolcanlogin FROM pg_roles ORDER BY rolname";
@@ -37,7 +47,11 @@ public sealed class PostgresMetadataService : IPostgresMetadataService
 
         return await session.QueryAsync(
             ListDatabasesSql,
-            reader => new DatabaseSummary(reader.GetString(0)),
+            reader => new DatabaseSummary(
+                Name: reader.GetString(0),
+                Owner: reader.IsDBNull(1) ? null : reader.GetString(1),
+                ServerVersion: reader.IsDBNull(3) ? null : reader.GetString(3),
+                SizeBytes: reader.IsDBNull(2) ? null : reader.GetInt64(2)),
             cancellationToken).ConfigureAwait(false);
     }
 

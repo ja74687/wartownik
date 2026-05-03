@@ -196,6 +196,42 @@
   <data name="Databases.LoadFailed" xml:space="preserve">
     <value>Nie udało się pobrać baz:</value>
   </data>
+  <data name="Databases.AddNew" xml:space="preserve">
+    <value>Dodaj bazę do profilu</value>
+  </data>
+  <data name="Databases.OwnerPrefix" xml:space="preserve">
+    <value>Właściciel</value>
+  </data>
+  <data name="Databases.SizePrefix" xml:space="preserve">
+    <value>Rozmiar</value>
+  </data>
+  <data name="Databases.SchemasOne" xml:space="preserve">
+    <value>{0} schemat</value>
+  </data>
+  <data name="Databases.SchemasMany" xml:space="preserve">
+    <value>{0} schematów</value>
+  </data>
+  <data name="Databases.UsersOne" xml:space="preserve">
+    <value>{0} użytkownik</value>
+  </data>
+  <data name="Databases.UsersMany" xml:space="preserve">
+    <value>{0} użytkowników</value>
+  </data>
+  <data name="Databases.GrantsOne" xml:space="preserve">
+    <value>{0} grant</value>
+  </data>
+  <data name="Databases.GrantsMany" xml:space="preserve">
+    <value>{0} grantów</value>
+  </data>
+  <data name="Databases.PendingMany" xml:space="preserve">
+    <value>{0} oczekujących</value>
+  </data>
+  <data name="Databases.LastSync" xml:space="preserve">
+    <value>ostatnia synchronizacja · {0}</value>
+  </data>
+  <data name="Databases.NeverSynced" xml:space="preserve">
+    <value>nigdy nie synchronizowano</value>
+  </data>
   <data name="Schemas.Title" xml:space="preserve">
     <value>Schematy</value>
   </data>
@@ -204,6 +240,90 @@
   </data>
   <data name="Schemas.LoadFailed" xml:space="preserve">
     <value>Nie udało się pobrać schem:</value>
+  </data>
+  <data name="DatabaseTabs.Overview" xml:space="preserve">
+    <value>Przegląd</value>
+  </data>
+  <data name="DatabaseTabs.Permissions" xml:space="preserve">
+    <value>Uprawnienia</value>
+  </data>
+  <data name="DatabaseTabs.SqlLog" xml:space="preserve">
+    <value>Log SQL</value>
+  </data>
+  <data name="DatabaseTabs.PermissionsComingSoon" xml:space="preserve">
+    <value>Macierz uprawnień — wkrótce</value>
+  </data>
+  <data name="DatabaseTabs.PermissionsHint" xml:space="preserve">
+    <value>Konfigurator grantów schemat-po-schemacie z transakcyjnym apply.</value>
+  </data>
+  <data name="DatabaseTabs.SqlLogComingSoon" xml:space="preserve">
+    <value>Log SQL — wkrótce</value>
+  </data>
+  <data name="DatabaseTabs.SqlLogHint" xml:space="preserve">
+    <value>Historia każdej instrukcji wykonanej przez Wartownik na tej bazie.</value>
+  </data>
+  <data name="Overview.ConnectionSection" xml:space="preserve">
+    <value>POŁĄCZENIE</value>
+  </data>
+  <data name="Overview.ConnectionHeading" xml:space="preserve">
+    <value>Jak Wartownik łączy się z tą bazą</value>
+  </data>
+  <data name="Overview.PillLogin" xml:space="preserve">
+    <value>login</value>
+  </data>
+  <data name="Overview.PillOwner" xml:space="preserve">
+    <value>WŁAŚCICIEL</value>
+  </data>
+  <data name="Overview.OwnedBy" xml:space="preserve">
+    <value>Właściciel bazy: {0}</value>
+  </data>
+  <data name="Overview.AtAGlance" xml:space="preserve">
+    <value>NA SKRÓCIE</value>
+  </data>
+  <data name="Overview.Grants" xml:space="preserve">
+    <value>grantów</value>
+  </data>
+  <data name="Overview.Pending" xml:space="preserve">
+    <value>oczekujących</value>
+  </data>
+  <data name="Overview.SchemasTooltip" xml:space="preserve">
+    <value>Schematy zdefiniowane przez użytkownika w tej bazie. Szybki test skali — 1 = mała, 30 = monolit modułowy.</value>
+  </data>
+  <data name="Overview.GrantsTooltip" xml:space="preserve">
+    <value>Istniejące nadania uprawnień na tej bazie (uzupełnione w Iter 5). Duże liczby zwykle oznaczają lata ad-hoc poprawek.</value>
+  </data>
+  <data name="Overview.PendingTooltip" xml:space="preserve">
+    <value>Zmiany wstępnie wprowadzone w macierzy uprawnień, jeszcze nie zaapplikowane (uzupełnione w Iter 5). &gt; 0 = masz tu niedokończoną robotę.</value>
+  </data>
+  <data name="Overview.LoginUsers" xml:space="preserve">
+    <value>userów</value>
+  </data>
+  <data name="Overview.LoginUsersTooltip" xml:space="preserve">
+    <value>Różne role z loginem mające jakiekolwiek uprawnienia tutaj (Iter 6). Duże liczby to anty-bałagan signal — za dużo osób ma dostęp.</value>
+  </data>
+  <data name="Overview.LastApply" xml:space="preserve">
+    <value>ostatnio</value>
+  </data>
+  <data name="Overview.LastApplyTooltip" xml:space="preserve">
+    <value>Kiedy Wartownik ostatnio coś tu zmienił (Iter 6). "nigdy" = ta baza nie jest jeszcze zarządzana przez Wartownik.</value>
+  </data>
+  <data name="Overview.NeverApplied" xml:space="preserve">
+    <value>nigdy</value>
+  </data>
+  <data name="Overview.Risk" xml:space="preserve">
+    <value>ryzyko</value>
+  </data>
+  <data name="Overview.RiskTooltip" xml:space="preserve">
+    <value>Heurystyczny score ryzyka (Iter 6). Świeci na czerwono gdy coś jest niebezpiecznie skonfigurowane — np. rola z loginem ma SUPERUSER, albo PUBLIC ma szeroki dostęp.</value>
+  </data>
+  <data name="Overview.RecentSection" xml:space="preserve">
+    <value>OSTATNIE ZMIANY</value>
+  </data>
+  <data name="Overview.RecentHeading" xml:space="preserve">
+    <value>Log audytu</value>
+  </data>
+  <data name="Overview.AuditEmpty" xml:space="preserve">
+    <value>Brak zarejestrowanych zmian dla tej bazy.</value>
   </data>
   <data name="Roles.Title" xml:space="preserve">
     <value>Role</value>

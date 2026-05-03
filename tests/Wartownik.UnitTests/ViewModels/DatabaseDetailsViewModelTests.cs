@@ -29,7 +29,7 @@ public class DatabaseDetailsViewModelTests
             English);
         return new DatabaseDetailsViewModel(
             SampleProfile(),
-            dbName,
+            new DatabaseSummary(dbName),
             loc,
             profiles ?? new FakeProfileService(),
             metadata ?? new FakeMetadataService());
@@ -96,7 +96,7 @@ public class DatabaseDetailsViewModelTests
         profiles.SavedPasswords[profile.Id] = "secret";
         var meta = new FakeMetadataService(new[] { "public" });
         var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
-        var sut = new DatabaseDetailsViewModel(profile, "mydb", loc, profiles, meta);
+        var sut = new DatabaseDetailsViewModel(profile, new DatabaseSummary("mydb"), loc, profiles, meta);
 
         await sut.LoadAsync();
 
@@ -117,7 +117,7 @@ public class DatabaseDetailsViewModelTests
     {
         var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
         Assert.Throws<ArgumentException>(() =>
-            new DatabaseDetailsViewModel(SampleProfile(), "  ", loc,
+            new DatabaseDetailsViewModel(SampleProfile(), new DatabaseSummary("  "), loc,
                 new FakeProfileService(), new FakeMetadataService()));
     }
 
@@ -128,15 +128,18 @@ public class DatabaseDetailsViewModelTests
         var profile = SampleProfile();
         var profiles = new FakeProfileService();
         var meta = new FakeMetadataService();
+        var summary = new DatabaseSummary("db");
 
         Assert.Throws<ArgumentNullException>(() =>
-            new DatabaseDetailsViewModel(null!, "db", loc, profiles, meta));
+            new DatabaseDetailsViewModel(null!, summary, loc, profiles, meta));
         Assert.Throws<ArgumentNullException>(() =>
-            new DatabaseDetailsViewModel(profile, "db", null!, profiles, meta));
+            new DatabaseDetailsViewModel(profile, null!, loc, profiles, meta));
         Assert.Throws<ArgumentNullException>(() =>
-            new DatabaseDetailsViewModel(profile, "db", loc, null!, meta));
+            new DatabaseDetailsViewModel(profile, summary, null!, profiles, meta));
         Assert.Throws<ArgumentNullException>(() =>
-            new DatabaseDetailsViewModel(profile, "db", loc, profiles, null!));
+            new DatabaseDetailsViewModel(profile, summary, loc, null!, meta));
+        Assert.Throws<ArgumentNullException>(() =>
+            new DatabaseDetailsViewModel(profile, summary, loc, profiles, null!));
     }
 
     private sealed class EmptyResources : IStringResources

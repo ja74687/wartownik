@@ -111,6 +111,21 @@
         <Setter Property="BoxShadow" Value="0 4 16 0 #55000000" />
     </Style>
 
+    <!-- Add-card: ghost surface used for "+ Add ..." placeholders. -->
+    <!-- True dashed borders aren't natively supported on Border; we approximate with an outlined ghost. -->
+    <Style Selector="Border.card.add-card">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="#475569" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BoxShadow" Value="0 0 0 0 #00000000" />
+        <Setter Property="Opacity" Value="0.85" />
+    </Style>
+    <Style Selector="Border.card.add-card:pointerover">
+        <Setter Property="Background" Value="#1A3B82F6" />
+        <Setter Property="BorderBrush" Value="#3B82F6" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
     <!-- ListBox styled as a stack of cards (no selection chrome). -->
     <Style Selector="ListBox.cards">
         <Setter Property="Background" Value="Transparent" />
@@ -343,6 +358,14 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0,0,0,1" />
         <Setter Property="BorderBrush" Value="#1E293B" />
+    </Style>
+    <!-- Some Semi.Avalonia builds add their own padding inside the TabControl content area,
+         which steals vertical space from the inner ScrollViewer and causes the bottom card
+         to clip. Force zero padding + stretch so ScrollViewer fills the tab body. -->
+    <Style Selector="TabControl /template/ ContentPresenter">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
     <Style Selector="TabItem">
         <Setter Property="Background" Value="Transparent" />
