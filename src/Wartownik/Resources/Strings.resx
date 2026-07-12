@@ -127,6 +127,15 @@
   <data name="Profiles.Edit" xml:space="preserve">
     <value>Edit</value>
   </data>
+  <data name="Profiles.Export" xml:space="preserve">
+    <value>Export to JSON</value>
+  </data>
+  <data name="Profiles.ImportedFormat" xml:space="preserve">
+    <value>Imported {0} profile(s). Edit each to add its password.</value>
+  </data>
+  <data name="Profiles.ImportFailedFormat" xml:space="preserve">
+    <value>Import failed: {0}</value>
+  </data>
   <data name="Profile.New" xml:space="preserve">
     <value>New connection profile</value>
   </data>

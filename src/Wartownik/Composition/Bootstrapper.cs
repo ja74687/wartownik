@@ -57,6 +57,7 @@ public static class Bootstrapper
         services.AddSingleton<IRoleEditor, AvaloniaRoleEditor>();
         services.AddSingleton<IConfirmationDialog, AvaloniaConfirmationDialog>();
         services.AddSingleton<IPreviewSqlDialog, AvaloniaPreviewSqlDialog>();
+        services.AddSingleton<IProfileExportDialog, AvaloniaProfileExportDialog>();
 
         services.AddSingleton<IStringResources>(_ => ResourceManagerStringResources.ForApplicationStrings());
         services.AddSingleton<ILocalizationService>(sp =>

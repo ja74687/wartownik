@@ -127,6 +127,15 @@
   <data name="Profiles.Edit" xml:space="preserve">
     <value>Edytuj</value>
   </data>
+  <data name="Profiles.Export" xml:space="preserve">
+    <value>Eksportuj do JSON</value>
+  </data>
+  <data name="Profiles.ImportedFormat" xml:space="preserve">
+    <value>Zaimportowano {0} profil(e). Edytuj każdy, aby dodać hasło.</value>
+  </data>
+  <data name="Profiles.ImportFailedFormat" xml:space="preserve">
+    <value>Import nieudany: {0}</value>
+  </data>
   <data name="Profile.New" xml:space="preserve">
     <value>Nowy profil połączenia</value>
   </data>

@@ -366,6 +366,52 @@ public class MainWindowViewModelTests
             new MainWindowViewModel(loc, profiles, editor, confirmation, tester, meta, null!));
     }
 
+    // ---------- Profile import ----------
+
+    [Fact]
+    public async Task ImportProfilesFromJsonAsync_valid_json_saves_profile_without_password()
+    {
+        var (vm, _, profiles, _, _) = Build();
+        const string json = """
+            { "displayName": "Imported dev", "host": "db.local", "port": 5432, "database": "mydb", "username": "svc", "sslMode": "Require" }
+            """;
+
+        await vm.ImportProfilesFromJsonAsync(json);
+
+        var saved = Assert.Single(profiles.Items);
+        Assert.Equal("Imported dev", saved.DisplayName);
+        Assert.Equal("svc", saved.Username);
+        Assert.True(vm.HasStatus);
+        Assert.Equal("", await profiles.GetPasswordAsync(saved.Id)); // no password on import
+    }
+
+    [Fact]
+    public async Task ImportProfilesFromJsonAsync_array_saves_all_profiles()
+    {
+        var (vm, _, profiles, _, _) = Build();
+        const string json = """
+            [
+              { "displayName": "a", "host": "h1", "port": 5432, "database": "d1", "username": "u1" },
+              { "displayName": "b", "host": "h2", "port": 5433, "database": "d2", "username": "u2" }
+            ]
+            """;
+
+        await vm.ImportProfilesFromJsonAsync(json);
+
+        Assert.Equal(2, profiles.Items.Count);
+    }
+
+    [Fact]
+    public async Task ImportProfilesFromJsonAsync_malformed_json_saves_nothing_and_reports_error()
+    {
+        var (vm, _, profiles, _, _) = Build();
+
+        await vm.ImportProfilesFromJsonAsync("{ not json");
+
+        Assert.Empty(profiles.Items);
+        Assert.True(vm.HasStatus);
+    }
+
     private sealed class EmptyResources : IStringResources
     {
         public string? Get(string key, CultureInfo culture) => null;

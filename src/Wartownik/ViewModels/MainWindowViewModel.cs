@@ -18,6 +18,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly IConnectionTester _tester;
     private readonly IPostgresMetadataService _metadata;
     private readonly IUpdateService? _updates;
+    private readonly IProfileExportDialog? _profileExport;
     private readonly ProfileDetailsFactory _detailsFactory;
 
     private readonly List<ConnectionProfileItemViewModel> _allProfiles = new();
@@ -25,6 +26,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private string _searchFilter = "";
     private UpdateInfo? _availableUpdate;
     private bool _isApplyingUpdate;
+    private string? _statusMessage;
 
     public ILocalizationService Localization { get; }
 
@@ -38,6 +40,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     public AsyncRelayCommand RefreshCommand { get; }
     public AsyncRelayCommand InstallUpdateCommand { get; }
     public RelayCommand DismissUpdateCommand { get; }
+    public AsyncRelayCommand ExportProfileCommand { get; }
 
     public MainWindowViewModel(
         ILocalizationService localization,
@@ -47,7 +50,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         IConnectionTester tester,
         IPostgresMetadataService metadata,
         ProfileDetailsFactory detailsFactory,
-        IUpdateService? updates = null)
+        IUpdateService? updates = null,
+        IProfileExportDialog? profileExport = null)
     {
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(profiles);
@@ -64,6 +68,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         _tester = tester;
         _metadata = metadata;
         _updates = updates;
+        _profileExport = profileExport;
         _detailsFactory = detailsFactory;
 
         AddProfileCommand = new AsyncRelayCommand(AddProfileAsync);
@@ -74,6 +79,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         RefreshCommand = new AsyncRelayCommand(LoadProfilesAsync);
         InstallUpdateCommand = new AsyncRelayCommand(InstallUpdateAsync, () => _availableUpdate is not null && !_isApplyingUpdate);
         DismissUpdateCommand = new RelayCommand(() => AvailableUpdate = null);
+        ExportProfileCommand = new AsyncRelayCommand(ExportProfileAsync);
 
         Localization.PropertyChanged += OnLocalizationChanged;
     }
@@ -290,6 +296,19 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Transient message under the profile list — import result / errors.</summary>
+    public string? StatusMessage
+    {
+        get => _statusMessage;
+        private set
+        {
+            if (SetField(ref _statusMessage, value))
+                RaisePropertyChanged(nameof(HasStatus));
+        }
+    }
+
+    public bool HasStatus => !string.IsNullOrEmpty(_statusMessage);
+
     private async Task AddProfileAsync()
     {
         var result = await _editor.AddAsync().ConfigureAwait(true);
@@ -299,6 +318,43 @@ public sealed class MainWindowViewModel : ViewModelBase
         await _profiles.SaveAsync(result.Profile, result.Password).ConfigureAwait(true);
         await LoadProfilesAsync().ConfigureAwait(true);
     }
+
+    /// <summary>
+    /// Import one or more profiles from a dropped/opened JSON file's contents. Imported
+    /// profiles get a fresh Id and no saved password — the user edits them to add credentials.
+    /// </summary>
+    public async Task ImportProfilesFromJsonAsync(string json)
+    {
+        if (!ConnectionProfileJson.TryParse(json, out var imported, out var error))
+        {
+            var failTemplate = Localization["Profiles.ImportFailedFormat"];
+            StatusMessage = string.Format(
+                string.IsNullOrEmpty(failTemplate) ? "Import failed: {0}" : failTemplate, error);
+            return;
+        }
+
+        foreach (var profile in imported)
+            await _profiles.SaveAsync(profile, "").ConfigureAwait(true);
+
+        await LoadProfilesAsync().ConfigureAwait(true);
+        var okTemplate = Localization["Profiles.ImportedFormat"];
+        StatusMessage = string.Format(
+            string.IsNullOrEmpty(okTemplate) ? "Imported {0} profile(s). Edit each to add its password." : okTemplate,
+            imported.Count);
+    }
+
+    private async Task ExportProfileAsync(object? parameter)
+    {
+        if (_profileExport is null || parameter is not ConnectionProfileItemViewModel item)
+            return;
+
+        var json = ConnectionProfileJson.Serialize(item.Profile);
+        var fileName = $"{Sanitize(item.Profile.DisplayName)}.json";
+        await _profileExport.ExportAsync(fileName, json).ConfigureAwait(true);
+    }
+
+    private static string Sanitize(string input) =>
+        string.Concat(input.Select(c => char.IsLetterOrDigit(c) ? c : '_'));
 
     private async Task OpenProfileAsync(object? parameter)
     {

@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Wartownik.ViewModels;
 
 namespace Wartownik;
@@ -10,6 +11,47 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        AddHandler(DragDrop.DragOverEvent, OnDragOver);
+        AddHandler(DragDrop.DropEvent, OnDrop);
+    }
+
+    private static void OnDragOver(object? sender, DragEventArgs e)
+    {
+        // Only offer to copy when files are being dragged in.
+        e.DragEffects = e.DataTransfer.Contains(DataFormat.File)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+    }
+
+    /// <summary>
+    /// Import connection profiles from dropped .json files (the tip on the profile list
+    /// promises this). Each file's contents go to the VM, which parses and saves them.
+    /// </summary>
+    private async void OnDrop(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+            return;
+
+        var files = e.DataTransfer.TryGetFiles();
+        if (files is null)
+            return;
+
+        foreach (var file in files.OfType<IStorageFile>())
+        {
+            if (!file.Name.EndsWith(".json", System.StringComparison.OrdinalIgnoreCase))
+                continue;
+            try
+            {
+                await using var stream = await file.OpenReadAsync();
+                using var reader = new System.IO.StreamReader(stream);
+                var json = await reader.ReadToEndAsync();
+                await vm.ImportProfilesFromJsonAsync(json);
+            }
+            catch
+            {
+                // Skip files we can't read; the VM surfaces parse errors for ones we can.
+            }
+        }
     }
 
     /// <summary>

@@ -18,7 +18,7 @@
         ExtendClientAreaTitleBarHeightHint="32"
         CanResize="True">
 
-    <Grid RowDefinitions="32,Auto,*">
+    <Grid RowDefinitions="32,Auto,*" DragDrop.AllowDrop="True">
 
         <!-- Custom title bar with our own caption buttons. -->
         <Grid Grid.Row="0" Background="#0F172A" ColumnDefinitions="*,Auto">
@@ -271,6 +271,12 @@
                                                            Text="{Binding LastEditedText}"
                                                            IsVisible="{Binding HasLastEdited}" />
                                                 <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                                                    <Button Classes="icon"
+                                                            Content="&#x21E9;"
+                                                            Foreground="#94A3B8"
+                                                            ToolTip.Tip="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).Localization[Profiles.Export]}"
+                                                            Command="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).ExportProfileCommand}"
+                                                            CommandParameter="{Binding}" />
                                                     <Button Classes="icon edit"
                                                             Content="&#x270E;"
                                                             Foreground="#94A3B8"
@@ -300,11 +306,19 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <TextBlock Grid.Row="4"
-                               Classes="caption"
-                               HorizontalAlignment="Center"
-                               Margin="0,16,0,0"
-                               Text="{Binding Localization[Profiles.TipImport]}" />
+                    <StackPanel Grid.Row="4" Margin="0,16,0,0" HorizontalAlignment="Center">
+                        <!-- Import result replaces the tip when there's something to say. -->
+                        <TextBlock Classes="caption"
+                                   HorizontalAlignment="Center"
+                                   Foreground="#10B981"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding StatusMessage}"
+                                   IsVisible="{Binding HasStatus}" />
+                        <TextBlock Classes="caption"
+                                   HorizontalAlignment="Center"
+                                   Text="{Binding Localization[Profiles.TipImport]}"
+                                   IsVisible="{Binding !HasStatus}" />
+                    </StackPanel>
                 </Grid>
 
                 <!-- View 2: profile details -->
