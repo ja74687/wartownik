@@ -340,6 +340,37 @@ public class PermissionsMatrixViewModelTests
         Assert.Equal(2, vm.PendingRoleCount);
     }
 
+    [Fact]
+    public async Task A_superseded_load_finishing_last_does_not_clobber_the_newer_roles_rows()
+    {
+        // Two grants loads race: the user switches roles while the first is still in flight.
+        // We drive completion order by hand so the STALE load finishes LAST — it must abandon
+        // instead of overwriting the fresher rows (which previously corrupted the matrix and
+        // could restore one role's staged edits onto another).
+        var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
+        var metadata = new FakeMetadataService(new[]
+        {
+            new RoleSummary("alice", IsSuperuser: false, CanCreateDb: false, CanCreateRole: false, CanLogin: true),
+            new RoleSummary("bob", IsSuperuser: false, CanCreateDb: false, CanCreateRole: false, CanLogin: true),
+        });
+        var grants = new GatedGrantService();
+        var vm = new PermissionsMatrixViewModel(
+            SampleProfile(), "mydb", loc, new FakeProfileService(), metadata, grants);
+
+        await vm.LoadAsync();          // alice selected → fires the (gated) initial load
+        grants.Complete("alice");      // let it finish so we start from a clean, loaded state
+        Assert.Equal("app_alice", vm.Rows.Single().SchemaName);
+
+        vm.SelectedRole = vm.TargetRoles.Single(r => r.Name == "bob");   // load B (bob), gated
+        vm.SelectedRole = vm.TargetRoles.Single(r => r.Name == "alice"); // load C (alice), gated — B is now stale
+
+        grants.Complete("alice"); // newest load wins the rows
+        grants.Complete("bob");   // stale load finishes last — must bow out, not clobber
+
+        // Rows still reflect the current selection (alice), not the superseded bob load.
+        Assert.Equal("app_alice", vm.Rows.Single().SchemaName);
+    }
+
     // ---------- Fakes ----------
 
     private sealed class EmptyResources : IStringResources
@@ -396,6 +427,41 @@ public class PermissionsMatrixViewModelTests
         {
             AppliedRoles.Add(roleName);
             AppliedChanges.AddRange(changes);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Grant service whose ListSchemaGrantsAsync hangs until the test calls Complete(role),
+    /// letting a test control the completion order of two concurrent loads. Each role resolves
+    /// to a single schema named "app_&lt;role&gt;" so rows are attributable to their load.
+    /// </summary>
+    private sealed class GatedGrantService : IPostgresGrantService
+    {
+        private readonly Dictionary<string, TaskCompletionSource<IReadOnlyList<SchemaGrantSummary>>> _pending =
+            new(StringComparer.Ordinal);
+        public List<string> AppliedRoles { get; } = new();
+
+        public Task<IReadOnlyList<SchemaGrantSummary>> ListSchemaGrantsAsync(
+            ConnectionProfile profile, string profilePassword, string databaseName, string roleName,
+            CancellationToken cancellationToken = default)
+        {
+            var tcs = new TaskCompletionSource<IReadOnlyList<SchemaGrantSummary>>();
+            _pending[roleName] = tcs; // a fresh load for the same role supersedes the slot
+            return tcs.Task;
+        }
+
+        public void Complete(string roleName) =>
+            _pending[roleName].SetResult(new[]
+            {
+                new SchemaGrantSummary($"app_{roleName}", false, false, false, false, false, false),
+            });
+
+        public Task ApplyGrantsAsync(
+            ConnectionProfile profile, string profilePassword, string databaseName, string roleName,
+            IReadOnlyList<GrantChange> changes, CancellationToken cancellationToken = default)
+        {
+            AppliedRoles.Add(roleName);
             return Task.CompletedTask;
         }
     }
