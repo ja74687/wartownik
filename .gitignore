@@ -59,6 +59,11 @@ profiles.json
 *.g.cs
 *.g.i.cs
 
+# Claude Code — local dev assistant files, never published
+CLAUDE.md
+.claude/
+.claude-*/
+
 # Misc
 *.swp
 *.bak
