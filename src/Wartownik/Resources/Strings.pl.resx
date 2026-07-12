@@ -313,6 +313,15 @@
   <data name="Permissions.ApplyAll" xml:space="preserve">
     <value>Zastosuj wszystkie</value>
   </data>
+  <data name="Permissions.RevokeConfirmTitle" xml:space="preserve">
+    <value>Odebrać dostęp?</value>
+  </data>
+  <data name="Permissions.RevokeConfirmMessage" xml:space="preserve">
+    <value>Ten batch odbiera {0} uprawnień w {1} rolach — łącznie {2} zmian(y). Odebranie może zablokować użytkownikom dostęp do schem lub tabel. Zastosować mimo to?</value>
+  </data>
+  <data name="Permissions.RevokeConfirmApply" xml:space="preserve">
+    <value>Odbierz i zastosuj</value>
+  </data>
   <data name="Permissions.PerRoleHint" xml:space="preserve">
     <value>Zastosuj lub odrzuć każdą rolę osobno — albo użyj przycisków powyżej dla wszystkich naraz.</value>
   </data>

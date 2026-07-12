@@ -313,6 +313,15 @@
   <data name="Permissions.ApplyAll" xml:space="preserve">
     <value>Apply all</value>
   </data>
+  <data name="Permissions.RevokeConfirmTitle" xml:space="preserve">
+    <value>Revoke access?</value>
+  </data>
+  <data name="Permissions.RevokeConfirmMessage" xml:space="preserve">
+    <value>This batch revokes {0} privilege(s) across {1} role(s) — {2} change(s) in total. Revoking can lock users out of schemas or tables. Apply anyway?</value>
+  </data>
+  <data name="Permissions.RevokeConfirmApply" xml:space="preserve">
+    <value>Revoke and apply</value>
+  </data>
   <data name="Permissions.PerRoleHint" xml:space="preserve">
     <value>Apply or discard each role independently — or use the buttons above for everything at once.</value>
   </data>

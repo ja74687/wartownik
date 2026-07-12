@@ -33,6 +33,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     private readonly IPostgresGrantService _grants;
     private readonly IPreviewSqlDialog? _previewSqlDialog;
     private readonly IAuditLogStore? _auditLog;
+    private readonly IConfirmationDialog? _confirmation;
 
     private RoleSummary? _selectedRole;
     private bool _isLoading;
@@ -70,7 +71,8 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         IPostgresMetadataService metadata,
         IPostgresGrantService grants,
         IPreviewSqlDialog? previewSqlDialog = null,
-        IAuditLogStore? auditLog = null)
+        IAuditLogStore? auditLog = null,
+        IConfirmationDialog? confirmation = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentException.ThrowIfNullOrWhiteSpace(databaseName);
@@ -87,6 +89,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         _grants = grants;
         _previewSqlDialog = previewSqlDialog;
         _auditLog = auditLog;
+        _confirmation = confirmation;
 
         LoadCommand = new AsyncRelayCommand(() => LoadAsync());
         ApplyCommand = new AsyncRelayCommand(() => ApplyAsync(), () => HasPending && !_isApplying);
@@ -457,6 +460,11 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         if (!_pendingByRole.TryGetValue(roleName, out var diff) || diff.Count == 0)
             return;
 
+        // Same revoke guard as the whole-batch path, scoped to this single role.
+        var roleRevokes = diff.Count(kv => !kv.Value);
+        if (!await ConfirmDestructiveAsync(roleRevokes, diff.Count, 1).ConfigureAwait(true))
+            return;
+
         IsApplying = true;
         ErrorMessage = null;
         StatusMessage = null;
@@ -524,6 +532,15 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
             CapturePendingForRole(_selectedRole);
 
         if (_pendingByRole.Count == 0)
+            return;
+
+        // Guard: revoking is the only thing here that can lock people out, so if the whole-batch
+        // apply contains any revoke, ask for confirmation before touching the database.
+        var batchRevokes = _pendingByRole.Values.Sum(d => d.Count(kv => !kv.Value));
+        if (!await ConfirmDestructiveAsync(
+                batchRevokes,
+                _pendingByRole.Values.Sum(d => d.Count),
+                _pendingByRole.Count).ConfigureAwait(true))
             return;
 
         IsApplying = true;
@@ -601,6 +618,38 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
             IsApplying = false;
             RaisePendingAggregates();
         }
+    }
+
+    /// <summary>
+    /// When an apply batch contains any REVOKE, double-check with the user before running it —
+    /// revoking is the one operation in this tool that can lock people out of schemas or tables.
+    /// Grant-only batches, or setups where no confirmation dialog is wired (e.g. unit tests),
+    /// proceed without a prompt. Returns true to proceed, false to abort.
+    /// </summary>
+    private async Task<bool> ConfirmDestructiveAsync(int revokeCount, int totalChanges, int roleCount)
+    {
+        if (_confirmation is null || revokeCount <= 0)
+            return true;
+
+        var messageTemplate = LocalizedOr(
+            "Permissions.RevokeConfirmMessage",
+            "This batch revokes {0} privilege(s) across {1} role(s) — {2} change(s) in total. " +
+            "Revoking can lock users out of schemas or tables. Apply anyway?");
+
+        var request = new ConfirmationRequest(
+            Title: LocalizedOr("Permissions.RevokeConfirmTitle", "Revoke access?"),
+            Message: string.Format(messageTemplate, revokeCount, roleCount, totalChanges),
+            ConfirmLabel: LocalizedOr("Permissions.RevokeConfirmApply", "Revoke and apply"),
+            CancelLabel: LocalizedOr("Common.Cancel", "Cancel"),
+            IsDestructive: true);
+
+        return await _confirmation.ConfirmAsync(request).ConfigureAwait(true);
+    }
+
+    private string LocalizedOr(string key, string fallback)
+    {
+        var value = Localization[key];
+        return string.IsNullOrEmpty(value) || value == key ? fallback : value;
     }
 
     /// <summary>

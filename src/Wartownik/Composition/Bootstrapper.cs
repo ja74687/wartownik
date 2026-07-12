@@ -79,7 +79,8 @@ public static class Bootstrapper
                 sp.GetRequiredService<IPreviewSqlDialog>(),
                 sp.GetRequiredService<IAuditLogStore>(),
                 sp.GetRequiredService<IYamlExporter>(),
-                sp.GetRequiredService<IYamlExportDialog>()));
+                sp.GetRequiredService<IYamlExportDialog>(),
+                sp.GetRequiredService<IConfirmationDialog>()));
 
         services.AddSingleton<MainWindowViewModel.ProfileDetailsFactory>(sp =>
             profile => new ProfileDetailsViewModel(

@@ -1,4 +1,7 @@
+using System.Globalization;
 using Wartownik.Connections;
+using Wartownik.Dialogs;
+using Wartownik.Localization;
 using Wartownik.ViewModels;
 
 namespace Wartownik.UnitTests.ViewModels;
@@ -149,5 +152,170 @@ public class PermissionsMatrixViewModelTests
         var row = new SchemaPermissionRowViewModel(AllOff(), () => notifications++);
         row.Select.Toggle();
         Assert.Equal(1, notifications);
+    }
+
+    // ---------- Confirm-before-destructive-Apply gate ----------
+
+    private static readonly CultureInfo English = new("en");
+
+    private static ConnectionProfile SampleProfile() =>
+        ConnectionProfile.Create("Local", "localhost", 5432, "postgres", "alice", PostgresSslMode.Disable);
+
+    /// <summary>
+    /// Build a matrix VM wired with fakes, loaded for a single login role "alice" against a
+    /// database whose "app" schema carries <paramref name="appGrants"/>. The fakes complete
+    /// synchronously so Rows are populated by the time the awaited loads return.
+    /// </summary>
+    private static async Task<(PermissionsMatrixViewModel vm, FakeGrantService grants, FakeConfirmation confirm)>
+        BuildLoadedAsync(SchemaGrantSummary appGrants, bool confirmResult)
+    {
+        var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
+        var profiles = new FakeProfileService();
+        var metadata = new FakeMetadataService(new[]
+        {
+            new RoleSummary("alice", IsSuperuser: false, CanCreateDb: false, CanCreateRole: false, CanLogin: true),
+        });
+        var grants = new FakeGrantService(new[] { appGrants });
+        var confirm = new FakeConfirmation { NextResult = confirmResult };
+
+        var vm = new PermissionsMatrixViewModel(
+            SampleProfile(), "mydb", loc, profiles, metadata, grants,
+            previewSqlDialog: null, auditLog: null, confirmation: confirm);
+
+        await vm.LoadAsync();
+        await vm.LoadGrantsForSelectedRoleAsync();
+        return (vm, grants, confirm);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_with_revoke_and_confirmation_declined_applies_nothing()
+    {
+        // "app".Select granted → toggle off = a pending REVOKE.
+        var (vm, grants, confirm) = await BuildLoadedAsync(
+            new SchemaGrantSummary("app", Usage: false, Create: false, Select: true, Insert: false, Update: false, Delete: false),
+            confirmResult: false);
+        vm.Rows.Single(r => r.SchemaName == "app").Select.Toggle();
+
+        await vm.ApplyAsync();
+
+        Assert.True(confirm.WasAsked);
+        Assert.True(confirm.LastRequest!.IsDestructive);
+        Assert.Empty(grants.AppliedRoles); // aborted before touching the database
+    }
+
+    [Fact]
+    public async Task ApplyAsync_with_revoke_and_confirmation_accepted_applies()
+    {
+        var (vm, grants, confirm) = await BuildLoadedAsync(
+            new SchemaGrantSummary("app", Usage: false, Create: false, Select: true, Insert: false, Update: false, Delete: false),
+            confirmResult: true);
+        vm.Rows.Single(r => r.SchemaName == "app").Select.Toggle();
+
+        await vm.ApplyAsync();
+
+        Assert.True(confirm.WasAsked);
+        Assert.Single(grants.AppliedRoles);
+        Assert.Equal("alice", grants.AppliedRoles[0]);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_grants_only_batch_skips_confirmation()
+    {
+        // "app" fully ungranted → toggle Select on = a pending GRANT, no revokes.
+        var (vm, grants, confirm) = await BuildLoadedAsync(
+            new SchemaGrantSummary("app", Usage: false, Create: false, Select: false, Insert: false, Update: false, Delete: false),
+            confirmResult: false); // would decline IF asked — but a grants-only batch must not ask
+        vm.Rows.Single(r => r.SchemaName == "app").Select.Toggle();
+
+        await vm.ApplyAsync();
+
+        Assert.False(confirm.WasAsked);
+        Assert.Single(grants.AppliedRoles); // applied even though NextResult was false, because never prompted
+    }
+
+    [Fact]
+    public async Task ApplyRoleAsync_with_revoke_and_confirmation_declined_applies_nothing()
+    {
+        var (vm, grants, confirm) = await BuildLoadedAsync(
+            new SchemaGrantSummary("app", Usage: false, Create: false, Select: true, Insert: false, Update: false, Delete: false),
+            confirmResult: false);
+        vm.Rows.Single(r => r.SchemaName == "app").Select.Toggle();
+
+        await vm.ApplyRoleAsync("alice");
+
+        Assert.True(confirm.WasAsked);
+        Assert.Empty(grants.AppliedRoles);
+    }
+
+    // ---------- Fakes ----------
+
+    private sealed class EmptyResources : IStringResources
+    {
+        public string? Get(string key, CultureInfo culture) => null;
+    }
+
+    private sealed class FakeProfileService : IConnectionProfileService
+    {
+        public Task<IReadOnlyList<ConnectionProfile>> ListAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ConnectionProfile>>(Array.Empty<ConnectionProfile>());
+        public Task<ConnectionProfile?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ConnectionProfile?>(null);
+        public Task<string?> GetPasswordAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>("pw");
+        public Task SaveAsync(ConnectionProfile profile, string password, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+    }
+
+    private sealed class FakeMetadataService : IPostgresMetadataService
+    {
+        private readonly IReadOnlyList<RoleSummary> _roles;
+        public FakeMetadataService(IReadOnlyList<RoleSummary> roles) => _roles = roles;
+
+        public Task<IReadOnlyList<DatabaseSummary>> ListDatabasesAsync(
+            ConnectionProfile profile, string password, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<DatabaseSummary>>(Array.Empty<DatabaseSummary>());
+        public Task<IReadOnlyList<RoleSummary>> ListRolesAsync(
+            ConnectionProfile profile, string password, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_roles);
+        public Task<IReadOnlyList<SchemaSummary>> ListSchemasAsync(
+            ConnectionProfile profile, string password, string databaseName, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SchemaSummary>>(Array.Empty<SchemaSummary>());
+    }
+
+    private sealed class FakeGrantService : IPostgresGrantService
+    {
+        private readonly IReadOnlyList<SchemaGrantSummary> _grants;
+        public List<string> AppliedRoles { get; } = new();
+
+        public FakeGrantService(IReadOnlyList<SchemaGrantSummary> grants) => _grants = grants;
+
+        public Task<IReadOnlyList<SchemaGrantSummary>> ListSchemaGrantsAsync(
+            ConnectionProfile profile, string profilePassword, string databaseName, string roleName,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(_grants);
+
+        public Task ApplyGrantsAsync(
+            ConnectionProfile profile, string profilePassword, string databaseName, string roleName,
+            IReadOnlyList<GrantChange> changes, CancellationToken cancellationToken = default)
+        {
+            AppliedRoles.Add(roleName);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeConfirmation : IConfirmationDialog
+    {
+        public bool NextResult { get; set; }
+        public bool WasAsked { get; private set; }
+        public ConfirmationRequest? LastRequest { get; private set; }
+
+        public Task<bool> ConfirmAsync(ConfirmationRequest request, CancellationToken cancellationToken = default)
+        {
+            WasAsked = true;
+            LastRequest = request;
+            return Task.FromResult(NextResult);
+        }
     }
 }

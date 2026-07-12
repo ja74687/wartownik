@@ -32,6 +32,7 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
     private readonly IAuditLogStore? _auditLog;
     private readonly IYamlExporter? _yamlExporter;
     private readonly IYamlExportDialog? _yamlExportDialog;
+    private readonly IConfirmationDialog? _confirmation;
 
     private bool _isLoading;
     private string? _errorMessage;
@@ -66,7 +67,8 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
         IPreviewSqlDialog? previewSqlDialog = null,
         IAuditLogStore? auditLog = null,
         IYamlExporter? yamlExporter = null,
-        IYamlExportDialog? yamlExportDialog = null)
+        IYamlExportDialog? yamlExportDialog = null,
+        IConfirmationDialog? confirmation = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(summary);
@@ -86,6 +88,7 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
         _auditLog = auditLog;
         _yamlExporter = yamlExporter;
         _yamlExportDialog = yamlExportDialog;
+        _confirmation = confirmation;
 
         Schemas.CollectionChanged += (_, _) =>
         {
@@ -236,7 +239,8 @@ public sealed class DatabaseDetailsViewModel : ViewModelBase
         if (_permissionsMatrix is null)
         {
             var matrix = new PermissionsMatrixViewModel(
-                Profile, DatabaseName, Localization, _profiles, _metadata, _grants, _previewSqlDialog, _auditLog);
+                Profile, DatabaseName, Localization, _profiles, _metadata, _grants,
+                _previewSqlDialog, _auditLog, _confirmation);
 
             // Forward matrix's pending counters to AT A GLANCE so the Overview reflects
             // whatever the user has staged in the Permissions tab — without us having to
