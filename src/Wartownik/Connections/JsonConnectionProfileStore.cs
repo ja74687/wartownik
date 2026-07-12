@@ -133,9 +133,11 @@ public sealed class JsonConnectionProfileStore : IConnectionProfileStore
         public string Database { get; set; } = "";
         public string Username { get; set; } = "";
         public PostgresSslMode SslMode { get; set; }
+        public DateTimeOffset? LastEditedAt { get; set; }
 
         public ConnectionProfile ToDomain() =>
-            ConnectionProfile.Create(Id, DisplayName, Host, Port, Database, Username, SslMode);
+            ConnectionProfile.Create(Id, DisplayName, Host, Port, Database, Username, SslMode)
+                with { LastEditedAt = LastEditedAt };
 
         public static ConnectionProfileDto FromDomain(ConnectionProfile profile) => new()
         {
@@ -146,6 +148,7 @@ public sealed class JsonConnectionProfileStore : IConnectionProfileStore
             Database = profile.Database,
             Username = profile.Username,
             SslMode = profile.SslMode,
+            LastEditedAt = profile.LastEditedAt,
         };
     }
 }

@@ -49,6 +49,20 @@ public class JsonConnectionProfileStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveAsync_then_ListAsync_preserves_LastEditedAt()
+    {
+        var store = new JsonConnectionProfileStore(_filePath);
+        var stamped = DateTimeOffset.UtcNow.AddMinutes(-5);
+        var profile = ConnectionProfile.Create("dev", "localhost", 5432, "mydb", "alice")
+            with { LastEditedAt = stamped };
+
+        await store.SaveAsync(profile);
+        var loaded = Assert.Single(await store.ListAsync());
+
+        Assert.Equal(stamped, loaded.LastEditedAt);
+    }
+
+    [Fact]
     public async Task SaveAsync_with_existing_id_updates_in_place()
     {
         var store = new JsonConnectionProfileStore(_filePath);
