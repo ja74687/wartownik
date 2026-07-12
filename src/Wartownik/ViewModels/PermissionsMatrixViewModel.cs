@@ -7,13 +7,15 @@ using Wartownik.Localization;
 namespace Wartownik.ViewModels;
 
 /// <summary>
-/// One row in the sticky bar's "pending per role" list. Lets the user see at a glance
-/// who has staged edits and how many of each kind, even when they're scattered across
-/// several users in the dropdown.
+/// One role's block in the sticky bar's pending list: the role name plus its individual
+/// staged changes, each independently selectable for "Apply selected".
 /// </summary>
-public sealed record PendingGroup(string RoleName, int TotalCount, int GrantCount, int RevokeCount)
+public sealed record PendingGroup(string RoleName, IReadOnlyList<PendingChangeViewModel> Changes)
 {
-    public string Summary => $"+{GrantCount} / -{RevokeCount}";
+    public int TotalCount => Changes.Count;
+    public int SelectedCount => Changes.Count(c => c.IsSelected);
+    public int GrantCount => Changes.Count(c => c.IsGrant);
+    public int RevokeCount => Changes.Count(c => c.IsRevoke);
 }
 
 /// <summary>
@@ -49,6 +51,12 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     private readonly Dictionary<string, Dictionary<(string Schema, GrantPrivilege Privilege), bool>> _pendingByRole =
         new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Changes the user has un-checked in the sticky bar. Everything is selected by default,
+    /// so we only track the opt-outs. Pruned to currently-pending keys on every aggregate refresh.
+    /// </summary>
+    private readonly HashSet<(string Role, string Schema, GrantPrivilege Privilege)> _deselected = new();
+
     public ConnectionProfile Profile { get; }
     public string DatabaseName { get; }
     public ILocalizationService Localization { get; }
@@ -62,6 +70,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     public AsyncRelayCommand ApplyRoleCommand { get; }
     public RelayCommand DiscardRoleCommand { get; }
     public AsyncRelayCommand PreviewSqlCommand { get; }
+    public AsyncRelayCommand ApplySelectedCommand { get; }
 
     public PermissionsMatrixViewModel(
         ConnectionProfile profile,
@@ -96,7 +105,8 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         DiscardCommand = new RelayCommand(Discard, () => HasPending && !_isApplying);
         ApplyRoleCommand = new AsyncRelayCommand(p => ApplyRoleAsync(p as string));
         DiscardRoleCommand = new RelayCommand(p => DiscardRole(p as string));
-        PreviewSqlCommand = new AsyncRelayCommand(() => PreviewSqlAsync(), () => HasPending && _previewSqlDialog is not null);
+        PreviewSqlCommand = new AsyncRelayCommand(() => PreviewSqlAsync(), () => HasSelectedChanges && _previewSqlDialog is not null);
+        ApplySelectedCommand = new AsyncRelayCommand(() => ApplySelectedAsync(), () => HasSelectedChanges && !_isApplying);
     }
 
     public RoleSummary? SelectedRole
@@ -162,6 +172,10 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
                 }
             }
         }
+
+        // The selected role's pending now lives in the live Rows, so drop its cache entry —
+        // otherwise PendingCount (= live rows + cache) would count this role twice.
+        _pendingByRole.Remove(_selectedRole.Name);
     }
 
     public bool HasSelectedRole => _selectedRole is not null;
@@ -249,38 +263,80 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         + _pendingByRole.Sum(kvp => kvp.Value.Count(p => !p.Value)); // cached pending=false means revoke
 
     /// <summary>
-    /// Pending edits grouped by target role. Includes both the visible rows (under SelectedRole)
-    /// and any cached edits for other roles in the dropdown. Sorted by role name for stability.
+    /// Every individual pending change across all roles — the cached (non-selected) roles plus
+    /// the live edits of the currently-selected role's rows. Read-only; does not mutate state.
+    /// The RestorePendingForCurrentRole invariant guarantees the selected role is never also in
+    /// the cache, so nothing is double-yielded.
     /// </summary>
-    public IReadOnlyList<PendingGroup> PendingGroups
+    private IEnumerable<(string Role, string Schema, GrantPrivilege Privilege, bool IsGrant)> EnumerateAllPending()
     {
-        get
+        foreach (var (roleName, diff) in _pendingByRole)
+            foreach (var kvp in diff)
+                yield return (roleName, kvp.Key.Schema, kvp.Key.Privilege, kvp.Value);
+
+        if (_selectedRole is not null)
         {
-            var groups = new Dictionary<string, (int total, int grants, int revokes)>(StringComparer.Ordinal);
-
-            // Cached entries — stash for other roles.
-            foreach (var (roleName, diff) in _pendingByRole)
-            {
-                var grants = diff.Count(p => p.Value);
-                var revokes = diff.Count - grants;
-                groups[roleName] = (diff.Count, grants, revokes);
-            }
-
-            // Visible rows — current role's live in-flight edits.
-            if (_selectedRole is not null)
-            {
-                var liveGrants = Rows.Sum(r => r.Cells.Count(c => c.State == CellState.PendingGrant));
-                var liveRevokes = Rows.Sum(r => r.Cells.Count(c => c.State == CellState.PendingRevoke));
-                var total = liveGrants + liveRevokes;
-                if (total > 0)
-                    groups[_selectedRole.Name] = (total, liveGrants, liveRevokes);
-            }
-
-            return groups
-                .OrderBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
-                .Select(kvp => new PendingGroup(kvp.Key, kvp.Value.total, kvp.Value.grants, kvp.Value.revokes))
-                .ToList();
+            foreach (var row in Rows)
+                foreach (var cell in row.Cells)
+                    if (cell.IsDirty)
+                        yield return (_selectedRole.Name, row.SchemaName, cell.Privilege, cell.PendingValue);
         }
+    }
+
+    private bool IsChangeSelected(string role, string schema, GrantPrivilege priv) =>
+        !_deselected.Contains((role, schema, priv));
+
+    /// <summary>
+    /// Pending edits grouped by target role, each carrying its individual selectable changes.
+    /// Rebuilt whenever the pending set changes; individual selection survives because it lives
+    /// in <see cref="_deselected"/> rather than on the rebuilt change VMs.
+    /// </summary>
+    public IReadOnlyList<PendingGroup> PendingGroups =>
+        EnumerateAllPending()
+            .GroupBy(c => c.Role, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new PendingGroup(
+                g.Key,
+                g.OrderBy(c => c.Schema, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(c => c.Privilege)
+                    .Select(c => new PendingChangeViewModel(
+                        c.Role, c.Schema, c.Privilege, c.IsGrant,
+                        isSelected: IsChangeSelected(c.Role, c.Schema, c.Privilege),
+                        onSelectionChanged: OnChangeSelectionToggled))
+                    .ToList()))
+            .ToList();
+
+    /// <summary>Pending changes the user has left ticked — what "Apply selected" will run.</summary>
+    public int SelectedChangeCount =>
+        EnumerateAllPending().Count(c => IsChangeSelected(c.Role, c.Schema, c.Privilege));
+
+    public bool HasSelectedChanges => SelectedChangeCount > 0;
+
+    public string SelectionSummary =>
+        string.Format(
+            LocalizedOr("Permissions.SelectionSummary", "{0} selected of {1} pending · {2} role(s)"),
+            SelectedChangeCount, PendingCount, PendingRoleCount);
+
+    private void OnChangeSelectionToggled(PendingChangeViewModel change)
+    {
+        var key = (change.RoleName, change.SchemaName, change.Privilege);
+        if (change.IsSelected)
+            _deselected.Remove(key);
+        else
+            _deselected.Add(key);
+
+        // Refresh selection-dependent state only — NOT PendingGroups, which would rebuild the
+        // checkbox VMs out from under the click that just happened.
+        RaiseSelectionAggregates();
+    }
+
+    private void RaiseSelectionAggregates()
+    {
+        RaisePropertyChanged(nameof(SelectedChangeCount));
+        RaisePropertyChanged(nameof(HasSelectedChanges));
+        RaisePropertyChanged(nameof(SelectionSummary));
+        ApplySelectedCommand.RaiseCanExecuteChanged();
+        PreviewSqlCommand.RaiseCanExecuteChanged();
     }
 
     /// <summary>
@@ -382,31 +438,34 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         if (_previewSqlDialog is null)
             return;
 
-        // Capture the visible row's edits so previewed SQL matches what Apply-all would do.
-        if (_selectedRole is not null)
-            CapturePendingForRole(_selectedRole);
+        // Build the ticked subset per role from the merged pending view — read-only, no capture
+        // and no reload, so previewing never disturbs the matrix.
+        var byRole = new Dictionary<string, List<GrantChange>>(StringComparer.Ordinal);
+        foreach (var c in EnumerateAllPending())
+        {
+            if (_deselected.Contains((c.Role, c.Schema, c.Privilege)))
+                continue;
+            if (!byRole.TryGetValue(c.Role, out var list))
+                byRole[c.Role] = list = new List<GrantChange>();
+            list.Add(new GrantChange(c.Schema, c.Privilege, c.IsGrant ? GrantOperation.Grant : GrantOperation.Revoke));
+        }
 
-        if (_pendingByRole.Count == 0)
+        if (byRole.Count == 0)
             return;
 
-        var groups = new List<PreviewSqlGroup>(_pendingByRole.Count);
-        foreach (var roleName in _pendingByRole.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+        var groups = new List<PreviewSqlGroup>();
+        var previewedChanges = 0;
+        foreach (var roleName in byRole.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
         {
-            var diff = _pendingByRole[roleName];
-            var changes = diff
-                .Select(kvp => new GrantChange(
-                    kvp.Key.Schema,
-                    kvp.Key.Privilege,
-                    kvp.Value ? GrantOperation.Grant : GrantOperation.Revoke))
-                .ToList();
-            var statements = PostgresGrantService.BuildStatements(roleName, changes);
-            groups.Add(new PreviewSqlGroup(roleName, statements));
+            var changes = byRole[roleName];
+            previewedChanges += changes.Count;
+            groups.Add(new PreviewSqlGroup(roleName, PostgresGrantService.BuildStatements(roleName, changes)));
         }
 
         var title = string.Format(
             Localization["Permissions.PreviewTitleFormat"] is { Length: > 0 } template
                 ? template : "{0} pending changes across {1} role(s)",
-            PendingCount,
+            previewedChanges,
             groups.Count);
 
         var request = new PreviewSqlRequest(groups, title);
@@ -621,6 +680,120 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Apply only the changes the user has left ticked in the sticky bar. Each role's selected
+    /// subset runs as its own transaction; un-ticked changes stay pending so the user can apply
+    /// them later. This is the primary Apply path from the UI.
+    /// </summary>
+    public async Task ApplySelectedAsync(CancellationToken cancellationToken = default)
+    {
+        // Normalize: move the visible role's live edits into the cache so every role is handled
+        // uniformly. The invariant fix in RestorePendingForCurrentRole keeps this from double-counting.
+        if (_selectedRole is not null)
+            CapturePendingForRole(_selectedRole);
+
+        // Build the ticked subset per role.
+        var selectedByRole = new Dictionary<string, List<GrantChange>>(StringComparer.Ordinal);
+        var selectedRevokes = 0;
+        foreach (var (roleName, diff) in _pendingByRole)
+        {
+            foreach (var kvp in diff)
+            {
+                if (_deselected.Contains((roleName, kvp.Key.Schema, kvp.Key.Privilege)))
+                    continue;
+                var isGrant = kvp.Value;
+                if (!isGrant)
+                    selectedRevokes++;
+                if (!selectedByRole.TryGetValue(roleName, out var list))
+                    selectedByRole[roleName] = list = new List<GrantChange>();
+                list.Add(new GrantChange(
+                    kvp.Key.Schema,
+                    kvp.Key.Privilege,
+                    isGrant ? GrantOperation.Grant : GrantOperation.Revoke));
+            }
+        }
+
+        var totalSelected = selectedByRole.Values.Sum(l => l.Count);
+        if (totalSelected == 0)
+        {
+            // Nothing ticked — pull the just-captured live role back onto its rows and bail.
+            await LoadGrantsForSelectedRoleAsync(cancellationToken).ConfigureAwait(true);
+            return;
+        }
+
+        if (!await ConfirmDestructiveAsync(selectedRevokes, totalSelected, selectedByRole.Count).ConfigureAwait(true))
+        {
+            await LoadGrantsForSelectedRoleAsync(cancellationToken).ConfigureAwait(true);
+            return;
+        }
+
+        IsApplying = true;
+        ErrorMessage = null;
+        StatusMessage = null;
+        var appliedChanges = 0;
+        var appliedRoles = 0;
+
+        try
+        {
+            var password = await _profiles
+                .GetPasswordAsync(Profile.Id, cancellationToken)
+                .ConfigureAwait(true) ?? "";
+
+            foreach (var (roleName, changes) in selectedByRole)
+            {
+                var statements = PostgresGrantService.BuildStatements(roleName, changes);
+                try
+                {
+                    await _grants
+                        .ApplyGrantsAsync(Profile, password, DatabaseName, roleName, changes, cancellationToken)
+                        .ConfigureAwait(true);
+                    await WriteAuditAsync(roleName, statements, AuditOutcome.Success, null).ConfigureAwait(true);
+                }
+                catch (Exception roleEx)
+                {
+                    await WriteAuditAsync(roleName, statements, AuditOutcome.Failed, roleEx.Message).ConfigureAwait(true);
+                    throw;
+                }
+
+                // Drop just the applied changes from this role's cache; keep the un-ticked ones.
+                if (_pendingByRole.TryGetValue(roleName, out var diff))
+                {
+                    foreach (var ch in changes)
+                        diff.Remove((ch.SchemaName, ch.Privilege));
+                    if (diff.Count == 0)
+                        _pendingByRole.Remove(roleName);
+                }
+                appliedChanges += changes.Count;
+                appliedRoles += 1;
+            }
+
+            // Everything the user asked for went through — clear the opt-outs so whatever is
+            // still pending defaults back to selected (ready to apply next time).
+            _deselected.Clear();
+
+            // Reload the visible role; RestorePendingForCurrentRole re-applies its remaining
+            // (un-ticked) pending onto the freshly-loaded rows.
+            await LoadGrantsForSelectedRoleAsync(cancellationToken).ConfigureAwait(true);
+
+            var template = Localization["Permissions.AppliedFormat"] is { Length: > 0 } t
+                ? t : "Applied {0} change(s).";
+            StatusMessage = appliedRoles > 1
+                ? string.Format(template, appliedChanges) + $" ({appliedRoles} roles)"
+                : string.Format(template, appliedChanges);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            try { await LoadGrantsForSelectedRoleAsync(cancellationToken).ConfigureAwait(true); }
+            catch { /* swallow — primary error already surfaced */ }
+        }
+        finally
+        {
+            IsApplying = false;
+            RaisePendingAggregates();
+        }
+    }
+
+    /// <summary>
     /// When an apply batch contains any REVOKE, double-check with the user before running it —
     /// revoking is the one operation in this tool that can lock people out of schemas or tables.
     /// Grant-only batches, or setups where no confirmation dialog is wired (e.g. unit tests),
@@ -692,6 +865,15 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     /// </summary>
     private void RaisePendingAggregates()
     {
+        // Drop any de-selection whose change is no longer pending (cell toggled back, applied,
+        // or discarded) so selection counts never drift from what's actually staged.
+        if (_deselected.Count > 0)
+        {
+            var pendingKeys = new HashSet<(string, string, GrantPrivilege)>(
+                EnumerateAllPending().Select(c => (c.Role, c.Schema, c.Privilege)));
+            _deselected.RemoveWhere(k => !pendingKeys.Contains(k));
+        }
+
         RaisePropertyChanged(nameof(CurrentRowsPendingCount));
         RaisePropertyChanged(nameof(PendingCount));
         RaisePropertyChanged(nameof(HasPending));
@@ -700,9 +882,13 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
         RaisePropertyChanged(nameof(PendingRoleCount));
         RaisePropertyChanged(nameof(HasMultiplePendingRoles));
         RaisePropertyChanged(nameof(PendingGroups));
+        RaisePropertyChanged(nameof(SelectedChangeCount));
+        RaisePropertyChanged(nameof(HasSelectedChanges));
+        RaisePropertyChanged(nameof(SelectionSummary));
         RaisePropertyChanged(nameof(IsContentVisible));
         ApplyCommand.RaiseCanExecuteChanged();
         DiscardCommand.RaiseCanExecuteChanged();
         PreviewSqlCommand.RaiseCanExecuteChanged();
+        ApplySelectedCommand.RaiseCanExecuteChanged();
     }
 }

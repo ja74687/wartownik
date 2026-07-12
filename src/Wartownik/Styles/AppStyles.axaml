@@ -473,6 +473,14 @@
         <Setter Property="Foreground" Value="#EF4444" />
     </Style>
 
+    <!-- Sticky-bar pending change glyphs: blue "+" for a grant, red "✕" for a revoke. -->
+    <Style Selector="TextBlock.chg-grant">
+        <Setter Property="Foreground" Value="#3B82F6" />
+    </Style>
+    <Style Selector="TextBlock.chg-revoke">
+        <Setter Property="Foreground" Value="#EF4444" />
+    </Style>
+
     <!-- Tab badge — small pill counter inside tab header. -->
     <Style Selector="Border.badge">
         <Setter Property="Padding" Value="6,1" />

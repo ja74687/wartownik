@@ -322,8 +322,14 @@
   <data name="Permissions.RevokeConfirmApply" xml:space="preserve">
     <value>Odbierz i zastosuj</value>
   </data>
+  <data name="Permissions.PendingHeading" xml:space="preserve">
+    <value>Oczekujące zmiany</value>
+  </data>
+  <data name="Permissions.SelectionSummary" xml:space="preserve">
+    <value>{0} zaznaczonych z {1} oczekujących · {2} rol(e)</value>
+  </data>
   <data name="Permissions.PerRoleHint" xml:space="preserve">
-    <value>Zastosuj lub odrzuć każdą rolę osobno — albo użyj przycisków powyżej dla wszystkich naraz.</value>
+    <value>Zaznacz zmiany, które chcesz, i kliknij Zastosuj. Niezaznaczone zostają oczekujące; Odrzuć usuwa całą rolę.</value>
   </data>
   <data name="Permissions.SuperuserBannerTitle" xml:space="preserve">
     <value>Ta rola to SUPERUSER</value>

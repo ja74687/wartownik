@@ -247,6 +247,99 @@ public class PermissionsMatrixViewModelTests
         Assert.Empty(grants.AppliedRoles);
     }
 
+    // ---------- Selective apply (per-change checkboxes) ----------
+
+    [Fact]
+    public async Task ApplySelectedAsync_applies_only_ticked_changes_and_keeps_the_rest_pending()
+    {
+        var (vm, grants, _) = await BuildLoadedAsync(
+            new SchemaGrantSummary("app", Usage: false, Create: false, Select: false, Insert: false, Update: false, Delete: false),
+            confirmResult: true);
+        var row = vm.Rows.Single(r => r.SchemaName == "app");
+        row.Select.Toggle(); // pending grant
+        row.Insert.Toggle(); // pending grant
+        Assert.Equal(2, vm.PendingCount);
+
+        // Un-tick the Insert change in the sticky bar.
+        vm.PendingGroups.Single().Changes.Single(c => c.Privilege == GrantPrivilege.Insert).IsSelected = false;
+        Assert.Equal(1, vm.SelectedChangeCount);
+
+        await vm.ApplySelectedAsync();
+
+        // Only Select went through.
+        Assert.Single(grants.AppliedChanges);
+        Assert.Equal(GrantPrivilege.Select, grants.AppliedChanges[0].Privilege);
+        Assert.Equal(GrantOperation.Grant, grants.AppliedChanges[0].Operation);
+        // Insert stayed pending; the de-selection was cleared so it's selected again.
+        Assert.Equal(1, vm.PendingCount);
+        Assert.Equal(1, vm.SelectedChangeCount);
+    }
+
+    [Fact]
+    public async Task ApplySelectedAsync_deselecting_the_only_revoke_skips_confirmation()
+    {
+        var (vm, grants, confirm) = await BuildLoadedAsync(
+            new SchemaGrantSummary("app", Usage: false, Create: false, Select: true, Insert: false, Update: false, Delete: false),
+            confirmResult: false); // would decline a revoke IF asked
+        var row = vm.Rows.Single(r => r.SchemaName == "app");
+        row.Select.Toggle(); // granted → pending REVOKE
+        row.Insert.Toggle(); // → pending grant
+
+        // Un-tick the revoke, leaving only the grant selected.
+        vm.PendingGroups.Single().Changes.Single(c => c.Privilege == GrantPrivilege.Select).IsSelected = false;
+
+        await vm.ApplySelectedAsync();
+
+        Assert.False(confirm.WasAsked); // grants-only selection → no destructive prompt
+        Assert.Single(grants.AppliedChanges);
+        Assert.Equal(GrantPrivilege.Insert, grants.AppliedChanges[0].Privilege);
+    }
+
+    [Fact]
+    public async Task ApplySelectedAsync_with_selected_revoke_declined_applies_nothing()
+    {
+        var (vm, grants, confirm) = await BuildLoadedAsync(
+            new SchemaGrantSummary("app", Usage: false, Create: false, Select: true, Insert: false, Update: false, Delete: false),
+            confirmResult: false);
+        vm.Rows.Single(r => r.SchemaName == "app").Select.Toggle(); // pending revoke, selected
+
+        await vm.ApplySelectedAsync();
+
+        Assert.True(confirm.WasAsked);
+        Assert.Empty(grants.AppliedChanges);
+        Assert.Equal(1, vm.PendingCount); // change stays pending
+    }
+
+    [Fact]
+    public async Task Revisiting_a_role_with_cached_pending_does_not_double_count()
+    {
+        var loc = new LocalizationService(new EmptyResources(), new[] { English }, English);
+        var metadata = new FakeMetadataService(new[]
+        {
+            new RoleSummary("alice", IsSuperuser: false, CanCreateDb: false, CanCreateRole: false, CanLogin: true),
+            new RoleSummary("bob", IsSuperuser: false, CanCreateDb: false, CanCreateRole: false, CanLogin: true),
+        });
+        var grants = new FakeGrantService(new[]
+        {
+            new SchemaGrantSummary("app", false, false, false, false, false, false),
+        });
+        var vm = new PermissionsMatrixViewModel(
+            SampleProfile(), "mydb", loc, new FakeProfileService(), metadata, grants);
+
+        await vm.LoadAsync(); // alice selected + loaded (synchronously via the setter)
+        vm.Rows.Single(r => r.SchemaName == "app").Select.Toggle(); // alice: 1 pending
+
+        vm.SelectedRole = vm.TargetRoles.Single(r => r.Name == "bob"); // caches alice, loads bob
+        vm.Rows.Single(r => r.SchemaName == "app").Insert.Toggle(); // bob: 1 pending
+
+        vm.SelectedRole = vm.TargetRoles.Single(r => r.Name == "alice"); // caches bob, restores alice
+
+        // alice restored to live rows, bob cached — 2 total, NOT 3 (the invariant fix stops the
+        // selected role being counted in both the live rows and the cache).
+        Assert.Equal(2, vm.PendingCount);
+        Assert.Equal(2, vm.PendingRoleCount);
+    }
+
     // ---------- Fakes ----------
 
     private sealed class EmptyResources : IStringResources
@@ -288,6 +381,7 @@ public class PermissionsMatrixViewModelTests
     {
         private readonly IReadOnlyList<SchemaGrantSummary> _grants;
         public List<string> AppliedRoles { get; } = new();
+        public List<GrantChange> AppliedChanges { get; } = new();
 
         public FakeGrantService(IReadOnlyList<SchemaGrantSummary> grants) => _grants = grants;
 
@@ -301,6 +395,7 @@ public class PermissionsMatrixViewModelTests
             IReadOnlyList<GrantChange> changes, CancellationToken cancellationToken = default)
         {
             AppliedRoles.Add(roleName);
+            AppliedChanges.AddRange(changes);
             return Task.CompletedTask;
         }
     }

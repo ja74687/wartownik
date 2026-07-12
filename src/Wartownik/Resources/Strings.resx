@@ -322,8 +322,14 @@
   <data name="Permissions.RevokeConfirmApply" xml:space="preserve">
     <value>Revoke and apply</value>
   </data>
+  <data name="Permissions.PendingHeading" xml:space="preserve">
+    <value>Pending changes</value>
+  </data>
+  <data name="Permissions.SelectionSummary" xml:space="preserve">
+    <value>{0} selected of {1} pending · {2} role(s)</value>
+  </data>
   <data name="Permissions.PerRoleHint" xml:space="preserve">
-    <value>Apply or discard each role independently — or use the buttons above for everything at once.</value>
+    <value>Tick the changes you want, then Apply selected. Un-ticked changes stay pending; Discard drops a whole role.</value>
   </data>
   <data name="Permissions.SuperuserBannerTitle" xml:space="preserve">
     <value>This role is a SUPERUSER</value>
