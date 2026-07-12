@@ -1303,10 +1303,8 @@
                                                                                                                            Foreground="#F3F4F6"
                                                                                                                            Text="{Binding RoleName}" />
                                                                                                                 <TextBlock Classes="caption"
-                                                                                                                           Text="{Binding SelectedCount, StringFormat='{}{0} selected'}" />
-                                                                                                                <TextBlock Classes="caption"
                                                                                                                            Foreground="#64748B"
-                                                                                                                           Text="{Binding TotalCount, StringFormat='/ {0}'}" />
+                                                                                                                           Text="{Binding TotalCount, StringFormat='{}{0} change(s)'}" />
                                                                                                             </StackPanel>
                                                                                                             <Button Grid.Column="1"
                                                                                                                     Padding="10,4"

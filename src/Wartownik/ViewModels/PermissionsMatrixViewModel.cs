@@ -51,6 +51,12 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     private readonly Dictionary<string, Dictionary<(string Schema, GrantPrivilege Privilege), bool>> _pendingByRole =
         new(StringComparer.Ordinal);
 
+    // Guards for the fire-and-forget grants load. _loadToken makes a superseded load abandon
+    // instead of clobbering fresher Rows; _rowsRole records which role the live Rows actually
+    // represent, so we never capture one role's dirty cells under another's name mid-load.
+    private int _loadToken;
+    private string? _rowsRole;
+
     /// <summary>
     /// Changes the user has un-checked in the sticky bar. Everything is selected by default,
     /// so we only track the opt-outs. Pruned to currently-pending keys on every aggregate refresh.
@@ -139,6 +145,12 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     {
         if (role is null)
             return;
+        // Only capture when the live Rows actually represent this role. During an in-flight load
+        // the Rows may still show the previous role; capturing then would stash the wrong role's
+        // dirty cells under this name (a phantom edit the user never made for it).
+        if (_rowsRole != role.Name)
+            return;
+
         var dirty = Rows
             .SelectMany(r => r.Cells.Where(c => c.IsDirty)
                 .Select(c => ((Schema: r.SchemaName, Privilege: c.Privilege), c.PendingValue)))
@@ -155,11 +167,9 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     /// After Rows are populated for the freshly-selected role, replay any cached pending edits
     /// the user had staged for them previously.
     /// </summary>
-    private void RestorePendingForCurrentRole()
+    private void RestorePendingForRole(RoleSummary role)
     {
-        if (_selectedRole is null)
-            return;
-        if (!_pendingByRole.TryGetValue(_selectedRole.Name, out var cached))
+        if (!_pendingByRole.TryGetValue(role.Name, out var cached))
             return;
         foreach (var row in Rows)
         {
@@ -173,9 +183,9 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
             }
         }
 
-        // The selected role's pending now lives in the live Rows, so drop its cache entry —
+        // The role's pending now lives in the live Rows, so drop its cache entry —
         // otherwise PendingCount (= live rows + cache) would count this role twice.
-        _pendingByRole.Remove(_selectedRole.Name);
+        _pendingByRole.Remove(role.Name);
     }
 
     public bool HasSelectedRole => _selectedRole is not null;
@@ -265,7 +275,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     /// <summary>
     /// Every individual pending change across all roles — the cached (non-selected) roles plus
     /// the live edits of the currently-selected role's rows. Read-only; does not mutate state.
-    /// The RestorePendingForCurrentRole invariant guarantees the selected role is never also in
+    /// The RestorePendingForRole invariant guarantees the selected role is never also in
     /// the cache, so nothing is double-yielded.
     /// </summary>
     private IEnumerable<(string Role, string Schema, GrantPrivilege Privilege, bool IsGrant)> EnumerateAllPending()
@@ -391,7 +401,14 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
 
     public async Task LoadGrantsForSelectedRoleAsync(CancellationToken cancellationToken = default)
     {
-        if (_selectedRole is null)
+        // Mark this as the newest load and snapshot the role we're loading. A switch that happens
+        // while we're awaiting bumps _loadToken and repoints _selectedRole; we must not let this
+        // stale load then clobber the fresher Rows or restore against the wrong role.
+        var token = ++_loadToken;
+        var role = _selectedRole;
+        _rowsRole = null; // the live Rows no longer faithfully represent any committed role
+
+        if (role is null)
         {
             Rows.Clear();
             RaisePendingAggregates();
@@ -408,24 +425,32 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
                 .ConfigureAwait(true) ?? "";
 
             var summaries = await _grants
-                .ListSchemaGrantsAsync(Profile, password, DatabaseName, _selectedRole.Name, cancellationToken)
+                .ListSchemaGrantsAsync(Profile, password, DatabaseName, role.Name, cancellationToken)
                 .ConfigureAwait(true);
+
+            // A newer switch superseded us while awaiting — abandon without touching Rows so the
+            // newer load owns them.
+            if (token != _loadToken)
+                return;
 
             Rows.Clear();
             foreach (var summary in summaries)
                 Rows.Add(new SchemaPermissionRowViewModel(summary, RaisePendingAggregates));
 
             // Reapply any edits the user had staged for this role earlier in the session.
-            RestorePendingForCurrentRole();
+            RestorePendingForRole(role);
+            _rowsRole = role.Name; // Rows now faithfully represent `role`
             RaisePendingAggregates();
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            if (token == _loadToken)
+                ErrorMessage = ex.Message;
         }
         finally
         {
-            IsLoading = false;
+            if (token == _loadToken)
+                IsLoading = false;
         }
     }
 
@@ -687,7 +712,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
     public async Task ApplySelectedAsync(CancellationToken cancellationToken = default)
     {
         // Normalize: move the visible role's live edits into the cache so every role is handled
-        // uniformly. The invariant fix in RestorePendingForCurrentRole keeps this from double-counting.
+        // uniformly. The invariant fix in RestorePendingForRole keeps this from double-counting.
         if (_selectedRole is not null)
             CapturePendingForRole(_selectedRole);
 
@@ -770,7 +795,7 @@ public sealed class PermissionsMatrixViewModel : ViewModelBase
             // still pending defaults back to selected (ready to apply next time).
             _deselected.Clear();
 
-            // Reload the visible role; RestorePendingForCurrentRole re-applies its remaining
+            // Reload the visible role; RestorePendingForRole re-applies its remaining
             // (un-ticked) pending onto the freshly-loaded rows.
             await LoadGrantsForSelectedRoleAsync(cancellationToken).ConfigureAwait(true);
 
