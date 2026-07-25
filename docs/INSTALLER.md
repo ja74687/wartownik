@@ -6,7 +6,7 @@ infrastructure, no MSIX certificate, no extra server.
 
 The release flow is:
 
-1. Tag a version → GitHub Actions builds a self-contained binary per platform.
+1. Tag a version → GitHub Actions builds a self-contained binary for Windows, Linux and macOS.
 2. Velopack's `vpk pack` turns the publish folder into the proper installer assets.
 3. `vpk upload github` pushes them to a GitHub Release.
 4. Every running installed copy of Wartownik checks the release feed and auto-updates.
@@ -74,11 +74,46 @@ the app in `%LOCALAPPDATA%\Wartownik` → Start menu shortcut + uninstaller appe
 Bump `--packVersion`, repeat steps 2-4. Velopack diffs against the previous version
 on the same channel, so users only download the deltas.
 
+## Version pinning (important)
+
+Velopack only supports the `vpk` CLI and the `Velopack` NuGet package being **the same
+version**. They are pinned in two places that must be changed together:
+
+- `VPK_VERSION` in [`.github/workflows/release.yml`](../.github/workflows/release.yml)
+- the `Velopack` `PackageReference` in `src/Wartownik/Wartownik.csproj`
+
+If they drift, `vpk pack` warns (`Velopack library version is lower than vpk version`)
+and the installers may not be readable by already-installed copies of the app.
+
 ## CI/CD via GitHub Actions
 
-See [`.github/workflows/release.yml`](../.github/workflows/release.yml). The
-workflow runs on tag push (`v*`) and does steps 2-4 for `win-x64` automatically.
-Add more `runs-on` matrix entries for macOS / Linux when you want them.
+See [`.github/workflows/release.yml`](../.github/workflows/release.yml). On a `v*` tag
+push it builds, tests, and packs all three platforms in parallel:
+
+| Runner | RID | Channel | Main exe |
+| --- | --- | --- | --- |
+| `windows-latest` | `win-x64` | `win` | `Wartownik.exe` |
+| `ubuntu-latest` | `linux-x64` | `linux` | `Wartownik` |
+| `macos-latest` | `osx-arm64` | `osx` | `Wartownik` |
+
+Each platform is a separate Velopack **channel** with its own update feed, so an
+installed copy only ever sees updates built for it. The three uploads are merged into
+one GitHub Release, which stays a **draft** until all three have landed — then the last
+step flips it to published, so nobody downloads a release missing their platform.
+
+### Rehearsing a release
+
+Because a tag push publishes for real, the workflow also has a manual trigger:
+**Actions → release → Run workflow**. That builds and packs all three platforms and
+attaches the installers to the workflow run as artifacts, without touching Releases.
+Use it after changing anything in the packaging pipeline.
+
+### Not covered yet
+
+- **Intel Macs** (`osx-x64`) — publishes fine from source, just isn't in the matrix.
+  Adding it means a second macOS channel with its own update feed.
+- **macOS icon** — Velopack wants an `.icns` and we only ship `.ico`/`.png`, so the
+  macOS build currently gets Velopack's default icon.
 
 ## Auto-update from inside the app
 

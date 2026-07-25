@@ -1,24 +1,62 @@
-# Builds Wartownik on every `v*` tag push, packs with Velopack, and publishes to a
-# GitHub Release. Only Windows for now — extend the matrix when macOS/Linux builds
-# are needed.
+# Builds Wartownik for Windows, Linux and macOS, packs each with Velopack, and
+# publishes them to a single GitHub Release.
 #
 # To cut a release:
 #   git tag v0.1.0 && git push origin v0.1.0
 #
-# The workflow reads the version from the tag (strips the leading `v`).
+# To rehearse without releasing anything, run the workflow manually
+# (Actions → release → Run workflow). That builds and packs all three platforms and
+# leaves the installers as workflow artifacts — nothing is uploaded to a Release.
+#
+# The version comes from the tag (leading `v` stripped), or from the manual input.
 name: release
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build for a rehearsal run (nothing is published)'
+        required: false
+        default: '0.0.0-dryrun'
 
 permissions:
   contents: write  # needed to create / update GitHub Releases
 
+env:
+  # Velopack only supports a matching CLI and library version, so keep this in lockstep
+  # with the Velopack PackageReference in src/Wartownik/Wartownik.csproj.
+  VPK_VERSION: '1.2.0'
+
+defaults:
+  run:
+    shell: bash  # available on all three runners, so every step is one script
+
 jobs:
-  release:
-    runs-on: windows-latest
+  build:
+    strategy:
+      fail-fast: true  # a half-built release is worse than none
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            channel: win
+            main_exe: Wartownik.exe
+            icon: src/Wartownik/Assets/wartownik.ico
+          - os: ubuntu-latest
+            rid: linux-x64
+            channel: linux
+            main_exe: Wartownik
+            icon: src/Wartownik/Assets/wartownik.png
+          - os: macos-latest
+            rid: osx-arm64
+            channel: osx
+            main_exe: Wartownik
+            icon: ''  # no .icns yet — Velopack falls back to its own default icon
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -31,50 +69,105 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Extract version from tag
+      - name: Resolve version
         id: version
-        shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
-          echo "version=$version" >> $env:GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "push" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="${{ inputs.version }}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Building version $version for ${{ matrix.rid }}"
 
       - name: Restore
         run: |
           dotnet restore src/Wartownik/Wartownik.csproj
           dotnet restore tests/Wartownik.UnitTests/Wartownik.UnitTests.csproj
 
+      # Run on every platform: the credential store has a per-OS implementation, so this
+      # is where we'd find out that the Linux or macOS one regressed.
       - name: Test
         run: dotnet test tests/Wartownik.UnitTests/Wartownik.UnitTests.csproj --no-restore -c Release
 
-      - name: Publish (win-x64, self-contained)
+      - name: Publish (${{ matrix.rid }}, self-contained)
         run: |
-          dotnet publish src/Wartownik/Wartownik.csproj `
-            -c Release `
-            -r win-x64 `
-            --self-contained `
-            -o publish/win-x64
+          dotnet publish src/Wartownik/Wartownik.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained \
+            -o publish/${{ matrix.rid }}
 
       - name: Install Velopack CLI
-        run: dotnet tool install -g vpk
+        run: dotnet tool install -g vpk --version "$VPK_VERSION"
 
       - name: Pack with Velopack
         run: |
-          vpk pack `
-            --packId Wartownik `
-            --packVersion ${{ steps.version.outputs.version }} `
-            --packDir publish/win-x64 `
-            --mainExe Wartownik.exe `
-            --packTitle "Wartownik" `
-            --packAuthors "SofTime - Piotr Krakowski" `
-            --icon src/Wartownik/Assets/wartownik.ico
+          icon_arg=""
+          if [ -n "${{ matrix.icon }}" ]; then
+            icon_arg="--icon ${{ matrix.icon }}"
+          fi
+          vpk pack \
+            --packId Wartownik \
+            --packVersion "${{ steps.version.outputs.version }}" \
+            --packDir publish/${{ matrix.rid }} \
+            --mainExe ${{ matrix.main_exe }} \
+            --packTitle "Wartownik" \
+            --packAuthors "SofTime - Piotr Krakowski" \
+            --channel ${{ matrix.channel }} \
+            $icon_arg
 
-      - name: Upload to GitHub Release
+      - name: Upload installers as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.channel }}
+          path: Releases/
+          if-no-files-found: error
+
+  # Only a tag push publishes. A manual rehearsal stops after `build`, leaving the
+  # installers attached to the workflow run so they can be downloaded and tried out.
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Download every platform's installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: artifacts
+
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk --version "$VPK_VERSION"
+
+      # Each platform is its own Velopack channel with its own update feed, so they are
+      # uploaded one at a time and merged into the same Release. They stay a draft until
+      # all three are in, so nobody downloads a release that is missing their platform.
+      - name: Upload each channel to the draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          vpk upload github `
-            --repoUrl https://github.com/ja74687/wartownik `
-            --tag ${{ github.ref_name }} `
-            --releaseName "Wartownik ${{ steps.version.outputs.version }}" `
-            --token $env:GITHUB_TOKEN `
-            --publish
+          version="${GITHUB_REF_NAME#v}"
+          for channel in win linux osx; do
+            echo "::group::Uploading $channel"
+            vpk upload github \
+              --outputDir "artifacts/release-$channel" \
+              --channel "$channel" \
+              --repoUrl https://github.com/ja74687/wartownik \
+              --tag "$GITHUB_REF_NAME" \
+              --releaseName "Wartownik $version" \
+              --token "$GITHUB_TOKEN" \
+              --merge
+            echo "::endgroup::"
+          done
+
+      - name: Publish the release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --repo ja74687/wartownik

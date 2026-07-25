@@ -57,10 +57,18 @@ Pre-built installers are published to [GitHub Releases](https://github.com/ja746
 
 - **Windows:** `Wartownik-win-Setup.exe` — installer (drops the app in `%LOCALAPPDATA%\Wartownik`, adds a Start menu shortcut, sets up auto-update)
 - **Windows portable:** `Wartownik-win-Portable.zip` — no-install zip, just unpack and run
+- **Linux (x64):** the `.AppImage` — mark it executable (`chmod +x`) and run it
+- **macOS (Apple Silicon):** the macOS installer package from the same release
 
-Linux and macOS builds are coming with a future release.
+Every build is self-contained: no .NET runtime to install first. Each platform updates
+itself from its own release channel.
 
-> The first time Windows shows a SmartScreen warning because the binary isn't yet code-signed — click **More info → Run anyway**. Code signing through SignPath/Certum is on the roadmap.
+> **Intel Macs** aren't published yet — [build from source](#build-from-source) with
+> `-r osx-x64` for now.
+
+> Neither the Windows nor the macOS build is code-signed yet, so the first launch needs
+> a nudge: on Windows click **More info → Run anyway** past SmartScreen; on macOS
+> right-click the app → **Open**. Code signing is on the roadmap.
 
 ## Build from source
 
