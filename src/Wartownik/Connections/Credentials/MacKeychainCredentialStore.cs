@@ -176,7 +176,16 @@ public sealed partial class MacKeychainCredentialStore : ICredentialStore
     private static string ReadCFData(IntPtr cfData)
     {
         var length = (int)CFDataGetLength(cfData);
+        if (length <= 0)
+            return "";
+
+        // An empty CFData can hand back a NULL byte pointer, which Marshal.Copy rejects. That
+        // happens for a legitimately stored empty secret — profiles imported from JSON carry no
+        // password — so treat it as the empty string rather than letting it throw.
         var ptr = CFDataGetBytePtr(cfData);
+        if (ptr == IntPtr.Zero)
+            return "";
+
         var managed = new byte[length];
         Marshal.Copy(ptr, managed, 0, length);
         return Encoding.UTF8.GetString(managed);

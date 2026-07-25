@@ -37,7 +37,10 @@ defaults:
 jobs:
   build:
     strategy:
-      fail-fast: true  # a half-built release is worse than none
+      # A real release stops at the first broken platform — a half-built release is worse than
+      # none. A rehearsal runs them all out, because the point is to learn about every platform
+      # in one go rather than fixing them one cancelled run at a time.
+      fail-fast: ${{ github.event_name == 'push' }}
       matrix:
         include:
           - os: windows-latest
