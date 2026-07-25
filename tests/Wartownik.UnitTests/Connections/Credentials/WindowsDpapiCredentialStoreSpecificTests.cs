@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using System.Text;
 using Wartownik.Connections.Credentials;
 
@@ -19,6 +20,8 @@ public class WindowsDpapiCredentialStoreSpecificTests : IDisposable
     public void Constructor_throws_on_non_Windows()
     {
         Skip.If(OperatingSystem.IsWindows(), "Negative test only meaningful off Windows.");
+        // Deliberately calling a Windows-only API from a non-Windows run — that refusal is the
+        // whole point of the test, so the platform check has to be suppressed rather than declared.
 #pragma warning disable CA1416
         Assert.Throws<PlatformNotSupportedException>(() =>
             new WindowsDpapiCredentialStore("svc", _filePath));
@@ -26,12 +29,11 @@ public class WindowsDpapiCredentialStoreSpecificTests : IDisposable
     }
 
     [SkippableFact]
+    [SupportedOSPlatform("windows")]
     public void Stored_secret_is_not_present_in_plaintext_on_disk()
     {
         Skip.IfNot(OperatingSystem.IsWindows(), "Windows-only test.");
-#pragma warning disable CA1416
         var store = new WindowsDpapiCredentialStore("svc", _filePath);
-#pragma warning restore CA1416
 
         const string secret = "topsecret-2026-payload";
         store.Set("k", secret);
@@ -41,27 +43,25 @@ public class WindowsDpapiCredentialStoreSpecificTests : IDisposable
     }
 
     [SkippableFact]
+    [SupportedOSPlatform("windows")]
     public void Different_service_name_cannot_decrypt_secret()
     {
         Skip.IfNot(OperatingSystem.IsWindows(), "Windows-only test.");
-#pragma warning disable CA1416
         var storeA = new WindowsDpapiCredentialStore("service-A", _filePath);
         storeA.Set("k", "secret");
 
         var storeB = new WindowsDpapiCredentialStore("service-B", _filePath);
-#pragma warning restore CA1416
 
         // Different entropy → DPAPI throws CryptographicException on Unprotect.
         Assert.ThrowsAny<Exception>(() => storeB.Get("k"));
     }
 
     [SkippableFact]
+    [SupportedOSPlatform("windows")]
     public void Atomic_write_does_not_leave_temp_file()
     {
         Skip.IfNot(OperatingSystem.IsWindows(), "Windows-only test.");
-#pragma warning disable CA1416
         var store = new WindowsDpapiCredentialStore("svc", _filePath);
-#pragma warning restore CA1416
 
         store.Set("k", "v");
 

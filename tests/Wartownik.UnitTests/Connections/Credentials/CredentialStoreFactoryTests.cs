@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Wartownik.Connections.Credentials;
 
 namespace Wartownik.UnitTests.Connections.Credentials;
@@ -15,6 +16,7 @@ public class CredentialStoreFactoryTests
     }
 
     [SkippableFact]
+    [SupportedOSPlatform("windows")]
     public void CreateForCurrentPlatform_returns_DPAPI_store_on_Windows()
     {
         Skip.IfNot(OperatingSystem.IsWindows(), "Windows-only check.");
@@ -23,6 +25,7 @@ public class CredentialStoreFactoryTests
     }
 
     [SkippableFact]
+    [SupportedOSPlatform("linux")]
     public void CreateForCurrentPlatform_returns_libsecret_store_on_Linux()
     {
         Skip.IfNot(OperatingSystem.IsLinux(), "Linux-only check.");
@@ -31,6 +34,7 @@ public class CredentialStoreFactoryTests
     }
 
     [SkippableFact]
+    [SupportedOSPlatform("macos")]
     public void CreateForCurrentPlatform_returns_keychain_store_on_macOS()
     {
         Skip.IfNot(OperatingSystem.IsMacOS(), "macOS-only check.");
