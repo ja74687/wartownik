@@ -1,0 +1,84 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:Wartownik.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="540"
+        x:Class="Wartownik.RoleMembershipEditorWindow"
+        x:DataType="vm:RoleMembershipEditorViewModel"
+        Title="{Binding Title, FallbackValue='Member of'}"
+        Icon="/Assets/wartownik.ico"
+        Width="460" Height="540"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="#0F172A"
+        TransparencyLevelHint="None"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="32">
+
+    <Grid RowDefinitions="32,*">
+
+        <!-- Custom title bar with close button only (dialog). -->
+        <Grid Grid.Row="0" Background="#0F172A" ColumnDefinitions="*,Auto">
+            <Border Grid.Column="0"
+                    Background="#0F172A"
+                    PointerPressed="OnTitleBarPointerPressed" />
+            <Button Grid.Column="1"
+                    Classes="caption close"
+                    Content="&#xE8BB;"
+                    FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                    ToolTip.Tip="Close"
+                    Click="OnCloseClick" />
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="32,16,32,24" RowDefinitions="Auto,Auto,*,Auto">
+
+            <TextBlock Grid.Row="0"
+                       Classes="h2"
+                       Text="{Binding Title, FallbackValue='Member of'}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,6" />
+
+            <TextBlock Grid.Row="1"
+                       Classes="caption"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,16"
+                       Text="{Binding Localization[Membership.Hint], FallbackValue='Tick the roles whose privileges this role should inherit.'}" />
+
+            <ScrollViewer Grid.Row="2" Padding="0,0,4,0">
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="subtle"
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding !HasOptions}"
+                               Text="{Binding EmptyHint, FallbackValue='There are no other roles to join.'}" />
+                    <ItemsControl ItemsSource="{Binding Options}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:MembershipOptionViewModel">
+                                <CheckBox IsChecked="{Binding IsMember, Mode=TwoWay}"
+                                          Content="{Binding GroupName}"
+                                          Margin="0,2" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="3"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8"
+                        Margin="0,20,0,0">
+                <Button Content="{Binding Localization[Common.Cancel], FallbackValue='Cancel'}"
+                        Click="OnCancel"
+                        Padding="20,8"
+                        MinWidth="100" />
+                <Button Content="{Binding Localization[Common.Save], FallbackValue='Save'}"
+                        Classes="accent"
+                        Click="OnSave"
+                        Padding="20,8"
+                        MinWidth="100" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

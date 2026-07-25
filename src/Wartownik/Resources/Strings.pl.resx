@@ -469,6 +469,21 @@
   <data name="Roles.Edit" xml:space="preserve">
     <value>Edytuj rolę</value>
   </data>
+  <data name="Membership.Action" xml:space="preserve">
+    <value>Grupy</value>
+  </data>
+  <data name="Membership.Title" xml:space="preserve">
+    <value>Grupy roli {0}</value>
+  </data>
+  <data name="Membership.Hint" xml:space="preserve">
+    <value>Zaznacz role, których uprawnienia ma dziedziczyć ta rola.</value>
+  </data>
+  <data name="Membership.MemberOf" xml:space="preserve">
+    <value>Należy do:</value>
+  </data>
+  <data name="Membership.NoGroups" xml:space="preserve">
+    <value>Nie ma innych ról, do których można dołączyć.</value>
+  </data>
   <data name="Roles.AlterFailed" xml:space="preserve">
     <value>Nie udało się zmodyfikować roli:</value>
   </data>

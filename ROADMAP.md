@@ -3,6 +3,18 @@
 The MVP (iterations 1-7) is shipped. This file tracks ideas for future work, plus
 the deliberate scope cuts we made so we don't accidentally re-debate them.
 
+## Shipped since the MVP
+
+- **Confirm dialog before destructive Apply** — a batch containing revokes asks first.
+- **Selective apply per pending change** — checkbox per staged change in the sticky bar.
+- **Profile import/export** — drag a JSON file in to import; export writes one out
+  (without the password, which stays in the OS keystore).
+- **Role membership** — put a role in a group with `GRANT group TO member`, so privileges
+  can be managed on the group and inherited by its members.
+- **App settings** — a Settings screen; the chosen UI language now survives a restart.
+- **Installer + auto-update** — Windows installer and portable zip via Velopack,
+  wired to GitHub Releases.
+
 ## Permissions matrix — depth
 
 - **Per-table object overrides** (mockup `04_permissions_matrix` showed expandable rows
@@ -16,12 +28,8 @@ the deliberate scope cuts we made so we don't accidentally re-debate them.
 
 ## Permissions matrix — flow
 
-- **Selective apply per pending change** — checkbox per pending change in the sticky bar
-  so the user can apply only a subset (currently you apply per role or all-at-once).
 - **Conflict detection on Apply** — if someone else changed permissions between
   load and apply, surface a diff before committing.
-- **Confirm dialog before destructive Apply** — when the batch contains many revokes
-  or touches owner-level objects, double-check.
 
 ## Audit log
 
@@ -34,12 +42,11 @@ the deliberate scope cuts we made so we don't accidentally re-debate them.
 
 ## Profile and database management
 
-- **Profile settings tab** (notifications, defaults, audit retention) — placeholder ships;
-  needs real content.
+- **More app settings** — the Settings screen holds the UI language; default SSL mode and
+  audit retention are the obvious next entries (the settings store takes new fields as-is).
 - **Add/remove databases per profile** — mockup `02_profile_workspace` had
   "Add a database to this profile" dashed card; today it's visual only.
 - **Background status refresh interval** — configurable; today it fires once on load.
-- **Profile import/export** — drag-and-drop JSON already imports; export is missing.
 - **Profile groups / favourites** in the sidebar.
 
 ## Multi-SQL
@@ -52,9 +59,15 @@ the deliberate scope cuts we made so we don't accidentally re-debate them.
 
 ## Distribution
 
-- **Installer** for Windows / macOS / Linux — see [INSTALLER.md](docs/INSTALLER.md).
-- **Auto-update** — Velopack pipeline tied to GitHub Releases.
+- **Linux and macOS installers** — Windows ships today; the other two are still
+  build-from-source only. See [INSTALLER.md](docs/INSTALLER.md).
 - **Code signing** — once we have a publisher cert; not blocking the first release.
+
+## Known limitations
+
+- **Quoted identifiers in the SQL whitelist** — the validator strips `'...'` literals but not
+  `"..."` identifiers, so a role or schema name containing `;` is refused as if it were two
+  statements. It fails closed (never mis-executed), but such objects can't be managed.
 
 ## Out of scope (will not do)
 

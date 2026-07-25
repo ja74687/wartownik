@@ -15,6 +15,11 @@ public sealed class ProfileDetailsViewModel : ViewModelBase
     private readonly IRoleEditor _roleEditor;
     private readonly IConfirmationDialog _confirmation;
     private readonly DatabaseDetailsFactory _databaseFactory;
+    private readonly IPostgresRoleMembershipService? _membership;
+    private readonly IRoleMembershipEditor? _membershipEditor;
+
+    /// <summary>All roles in the cluster from the last load — the candidate groups for membership.</summary>
+    private IReadOnlyList<RoleSummary> _allRoles = Array.Empty<RoleSummary>();
 
     private DatabaseDetailsViewModel? _selectedDatabase;
 
@@ -33,6 +38,7 @@ public sealed class ProfileDetailsViewModel : ViewModelBase
     public AsyncRelayCommand DropRoleCommand { get; }
     public AsyncRelayCommand OpenDatabaseCommand { get; }
     public AsyncRelayCommand BackToDatabasesCommand { get; }
+    public AsyncRelayCommand EditMembershipCommand { get; }
 
     public ProfileDetailsViewModel(
         ConnectionProfile profile,
@@ -42,7 +48,9 @@ public sealed class ProfileDetailsViewModel : ViewModelBase
         IPostgresRoleAdminService roleAdmin,
         IRoleEditor roleEditor,
         IConfirmationDialog confirmation,
-        DatabaseDetailsFactory databaseFactory)
+        DatabaseDetailsFactory databaseFactory,
+        IPostgresRoleMembershipService? membership = null,
+        IRoleMembershipEditor? membershipEditor = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(localization);
@@ -61,6 +69,8 @@ public sealed class ProfileDetailsViewModel : ViewModelBase
         _roleEditor = roleEditor;
         _confirmation = confirmation;
         _databaseFactory = databaseFactory;
+        _membership = membership;
+        _membershipEditor = membershipEditor;
 
         AddUserCommand = new AsyncRelayCommand(() => AddRoleAsync(canLoginDefault: true));
         AddRoleCommand = new AsyncRelayCommand(() => AddRoleAsync(canLoginDefault: false));
@@ -68,7 +78,14 @@ public sealed class ProfileDetailsViewModel : ViewModelBase
         DropRoleCommand = new AsyncRelayCommand(parameter => DropRoleAsync(parameter));
         OpenDatabaseCommand = new AsyncRelayCommand(parameter => OpenDatabaseAsync(parameter));
         BackToDatabasesCommand = new AsyncRelayCommand(BackToDatabasesAsync);
+        EditMembershipCommand = new AsyncRelayCommand(parameter => EditMembershipAsync(parameter));
     }
+
+    /// <summary>
+    /// Membership editing needs both the catalog read and the dialog; when either is missing
+    /// (unit tests build the VM without them) the UI hides the entry point instead of failing.
+    /// </summary>
+    public bool CanEditMembership => _membership is not null && _membershipEditor is not null;
 
     public DatabaseDetailsViewModel? SelectedDatabase
     {
@@ -159,10 +176,15 @@ public sealed class ProfileDetailsViewModel : ViewModelBase
             var roles = await _metadata
                 .ListRolesAsync(Profile, password, cancellationToken)
                 .ConfigureAwait(true);
+            _allRoles = roles;
+
+            var memberships = await LoadMembershipsAsync(password, cancellationToken).ConfigureAwait(true);
 
             foreach (var summary in roles)
             {
                 var item = new RoleItemViewModel(summary, Localization);
+                if (memberships.TryGetValue(summary.Name, out var groups))
+                    item.MemberOf = groups;
                 if (summary.CanLogin)
                     Users.Add(item);
                 else
@@ -177,6 +199,67 @@ public sealed class ProfileDetailsViewModel : ViewModelBase
         {
             IsLoading = false;
             RaiseListSnapshotProperties();
+        }
+    }
+
+    /// <summary>
+    /// Membership edges grouped by member name. Best-effort: on an older server or without
+    /// catalog access the roles list still loads, just without the "member of" line.
+    /// </summary>
+    private async Task<Dictionary<string, IReadOnlyList<string>>> LoadMembershipsAsync(
+        string password,
+        CancellationToken cancellationToken)
+    {
+        if (_membership is null)
+            return new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+
+        try
+        {
+            var edges = await _membership
+                .ListMembershipsAsync(Profile, password, cancellationToken)
+                .ConfigureAwait(true);
+
+            return edges
+                .GroupBy(e => e.MemberRole, StringComparer.Ordinal)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (IReadOnlyList<string>)g.Select(e => e.GroupRole).ToList(),
+                    StringComparer.Ordinal);
+        }
+        catch
+        {
+            return new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        }
+    }
+
+    private async Task EditMembershipAsync(object? parameter)
+    {
+        if (parameter is not RoleItemViewModel item)
+            return;
+        if (_membership is null || _membershipEditor is null)
+            return;
+
+        var changes = await _membershipEditor
+            .EditAsync(item.Summary, _allRoles, item.MemberOf)
+            .ConfigureAwait(true);
+
+        if (changes is null || changes.Count == 0)
+            return;
+
+        try
+        {
+            var password = await _profiles
+                .GetPasswordAsync(Profile.Id)
+                .ConfigureAwait(true) ?? "";
+            await _membership
+                .ApplyMembershipChangesAsync(Profile, password, item.Name, changes)
+                .ConfigureAwait(true);
+
+            await LoadAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
         }
     }
 

@@ -24,7 +24,9 @@ public class ProfileDetailsViewModelTests
         FakeMetadataService? metadata = null,
         FakeRoleAdminService? roleAdmin = null,
         FakeRoleEditor? roleEditor = null,
-        FakeConfirmationDialog? confirmation = null)
+        FakeConfirmationDialog? confirmation = null,
+        FakeMembershipService? membership = null,
+        FakeMembershipEditor? membershipEditor = null)
     {
         var loc = new LocalizationService(
             new EmptyResources(),
@@ -43,7 +45,9 @@ public class ProfileDetailsViewModelTests
             roleAdmin ?? new FakeRoleAdminService(),
             roleEditor ?? new FakeRoleEditor(),
             confirmation ?? new FakeConfirmationDialog { NextResult = true },
-            dbFactory);
+            dbFactory,
+            membership,
+            membershipEditor);
     }
 
     [Fact]
@@ -472,6 +476,184 @@ public class ProfileDetailsViewModelTests
         Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, profiles, metadata, roleAdmin, null!, confirm, dbFactory));
         Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, profiles, metadata, roleAdmin, roleEditor, null!, dbFactory));
         Assert.Throws<ArgumentNullException>(() => new ProfileDetailsViewModel(profile, loc, profiles, metadata, roleAdmin, roleEditor, confirm, null!));
+    }
+
+    // ---------- Role membership ----------
+
+    private static RoleSummary Role(string name, bool canLogin) =>
+        new(name, IsSuperuser: false, CanCreateDb: false, CanCreateRole: false, CanLogin: canLogin);
+
+    [Fact]
+    public async Task LoadAsync_attaches_each_roles_groups()
+    {
+        var meta = new FakeMetadataService();
+        meta.SetRoles(new[] { Role("alice", true), Role("devs", false) });
+        var membership = new FakeMembershipService
+        {
+            Edges = { new RoleMembership("alice", "devs") },
+        };
+        var vm = Create(metadata: meta, membership: membership);
+
+        await vm.LoadAsync();
+
+        Assert.Equal(new[] { "devs" }, vm.Users.Single().MemberOf);
+        Assert.True(vm.Users.Single().HasMemberships);
+        Assert.False(vm.Roles.Single().HasMemberships); // devs belongs to nothing
+    }
+
+    [Fact]
+    public async Task LoadAsync_still_lists_roles_when_membership_lookup_fails()
+    {
+        var meta = new FakeMetadataService();
+        meta.SetRoles(new[] { Role("alice", true) });
+        var membership = new FakeMembershipService { ThrowOnList = true };
+        var vm = Create(metadata: meta, membership: membership);
+
+        await vm.LoadAsync();
+
+        Assert.Single(vm.Users);                       // roles survived
+        Assert.False(vm.Users.Single().HasMemberships); // just no membership line
+        Assert.False(vm.HasError);
+    }
+
+    [Fact]
+    public async Task EditMembershipCommand_applies_the_confirmed_changes()
+    {
+        var meta = new FakeMetadataService();
+        meta.SetRoles(new[] { Role("alice", true), Role("devs", false) });
+        var membership = new FakeMembershipService();
+        var editor = new FakeMembershipEditor
+        {
+            NextResult = new[] { new RoleMembershipChange("devs", GrantOperation.Grant) },
+        };
+        var vm = Create(metadata: meta, membership: membership, membershipEditor: editor);
+        await vm.LoadAsync();
+
+        await vm.EditMembershipCommand.ExecuteAsync(vm.Users.Single());
+
+        Assert.Equal("alice", membership.LastMemberRole);
+        var applied = Assert.Single(membership.AppliedChanges);
+        Assert.Equal("devs", applied.GroupRole);
+        Assert.Equal(GrantOperation.Grant, applied.Operation);
+    }
+
+    [Fact]
+    public async Task EditMembershipCommand_offers_every_role_as_a_candidate_group()
+    {
+        var meta = new FakeMetadataService();
+        meta.SetRoles(new[] { Role("alice", true), Role("devs", false), Role("ops", false) });
+        var membership = new FakeMembershipService
+        {
+            Edges = { new RoleMembership("alice", "devs") },
+        };
+        var editor = new FakeMembershipEditor();
+        var vm = Create(metadata: meta, membership: membership, membershipEditor: editor);
+        await vm.LoadAsync();
+
+        await vm.EditMembershipCommand.ExecuteAsync(vm.Users.Single());
+
+        Assert.Equal(new[] { "alice", "devs", "ops" }, editor.LastAllRoles!.Select(r => r.Name));
+        Assert.Equal(new[] { "devs" }, editor.LastCurrentGroups); // the dialog gets today's state
+    }
+
+    [Fact]
+    public async Task EditMembershipCommand_when_cancelled_applies_nothing()
+    {
+        var meta = new FakeMetadataService();
+        meta.SetRoles(new[] { Role("alice", true) });
+        var membership = new FakeMembershipService();
+        var editor = new FakeMembershipEditor { NextResult = null }; // cancelled
+        var vm = Create(metadata: meta, membership: membership, membershipEditor: editor);
+        await vm.LoadAsync();
+
+        await vm.EditMembershipCommand.ExecuteAsync(vm.Users.Single());
+
+        Assert.Empty(membership.AppliedChanges);
+    }
+
+    [Fact]
+    public async Task EditMembershipCommand_with_an_empty_diff_does_not_hit_the_database()
+    {
+        var meta = new FakeMetadataService();
+        meta.SetRoles(new[] { Role("alice", true) });
+        var membership = new FakeMembershipService();
+        var editor = new FakeMembershipEditor { NextResult = Array.Empty<RoleMembershipChange>() };
+        var vm = Create(metadata: meta, membership: membership, membershipEditor: editor);
+        await vm.LoadAsync();
+
+        await vm.EditMembershipCommand.ExecuteAsync(vm.Users.Single());
+
+        Assert.Null(membership.LastMemberRole); // Save with nothing ticked is a no-op
+    }
+
+    [Fact]
+    public async Task EditMembershipCommand_surfaces_an_apply_failure()
+    {
+        var meta = new FakeMetadataService();
+        meta.SetRoles(new[] { Role("alice", true) });
+        var membership = new FakeMembershipService { ThrowOnApply = true };
+        var editor = new FakeMembershipEditor
+        {
+            NextResult = new[] { new RoleMembershipChange("devs", GrantOperation.Grant) },
+        };
+        var vm = Create(metadata: meta, membership: membership, membershipEditor: editor);
+        await vm.LoadAsync();
+
+        await vm.EditMembershipCommand.ExecuteAsync(vm.Users.Single());
+
+        Assert.True(vm.HasError);
+    }
+
+    [Fact]
+    public void CanEditMembership_is_false_without_the_service_or_the_dialog()
+    {
+        Assert.False(Create().CanEditMembership);
+        Assert.False(Create(membership: new FakeMembershipService()).CanEditMembership);
+        Assert.True(Create(
+            membership: new FakeMembershipService(),
+            membershipEditor: new FakeMembershipEditor()).CanEditMembership);
+    }
+
+    private sealed class FakeMembershipService : IPostgresRoleMembershipService
+    {
+        public List<RoleMembership> Edges { get; } = new();
+        public List<RoleMembershipChange> AppliedChanges { get; } = new();
+        public string? LastMemberRole { get; private set; }
+        public bool ThrowOnList { get; set; }
+        public bool ThrowOnApply { get; set; }
+
+        public Task<IReadOnlyList<RoleMembership>> ListMembershipsAsync(
+            ConnectionProfile profile, string profilePassword, CancellationToken cancellationToken = default) =>
+            ThrowOnList
+                ? Task.FromException<IReadOnlyList<RoleMembership>>(new InvalidOperationException("no catalog access"))
+                : Task.FromResult<IReadOnlyList<RoleMembership>>(Edges.ToList());
+
+        public Task ApplyMembershipChangesAsync(
+            ConnectionProfile profile, string profilePassword, string memberRole,
+            IReadOnlyList<RoleMembershipChange> changes, CancellationToken cancellationToken = default)
+        {
+            if (ThrowOnApply)
+                return Task.FromException(new InvalidOperationException("permission denied"));
+            LastMemberRole = memberRole;
+            AppliedChanges.AddRange(changes);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeMembershipEditor : IRoleMembershipEditor
+    {
+        public IReadOnlyList<RoleMembershipChange>? NextResult { get; set; }
+        public IReadOnlyList<RoleSummary>? LastAllRoles { get; private set; }
+        public IReadOnlyCollection<string>? LastCurrentGroups { get; private set; }
+
+        public Task<IReadOnlyList<RoleMembershipChange>?> EditAsync(
+            RoleSummary member, IReadOnlyList<RoleSummary> allRoles,
+            IReadOnlyCollection<string> currentGroups, CancellationToken cancellationToken = default)
+        {
+            LastAllRoles = allRoles;
+            LastCurrentGroups = currentGroups;
+            return Task.FromResult(NextResult);
+        }
     }
 
     private sealed class EmptyResources : IStringResources

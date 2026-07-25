@@ -54,11 +54,13 @@ public static class Bootstrapper
         services.AddSingleton<IConnectionTester, PostgresConnectionTester>();
         services.AddSingleton<IPostgresMetadataService, PostgresMetadataService>();
         services.AddSingleton<IPostgresRoleAdminService, PostgresRoleAdminService>();
+        services.AddSingleton<IPostgresRoleMembershipService, PostgresRoleMembershipService>();
         services.AddSingleton<IPostgresGrantService, PostgresGrantService>();
         services.AddSingleton<IYamlExporter, YamlExporter>();
         services.AddSingleton<IYamlExportDialog, AvaloniaYamlExportDialog>();
         services.AddSingleton<IUpdateService, VelopackUpdateService>();
         services.AddSingleton<IRoleEditor, AvaloniaRoleEditor>();
+        services.AddSingleton<IRoleMembershipEditor, AvaloniaRoleMembershipEditor>();
         services.AddSingleton<IConfirmationDialog, AvaloniaConfirmationDialog>();
         services.AddSingleton<IPreviewSqlDialog, AvaloniaPreviewSqlDialog>();
         services.AddSingleton<IProfileExportDialog, AvaloniaProfileExportDialog>();
@@ -72,6 +74,7 @@ public static class Bootstrapper
 
         services.AddTransient<ConnectionProfileEditorViewModel>();
         services.AddTransient<RoleEditorViewModel>();
+        services.AddTransient<RoleMembershipEditorViewModel>();
         services.AddSingleton<ProfileDetailsViewModel.DatabaseDetailsFactory>(sp =>
             (profile, summary) => new DatabaseDetailsViewModel(
                 profile,
@@ -96,7 +99,9 @@ public static class Bootstrapper
                 sp.GetRequiredService<IPostgresRoleAdminService>(),
                 sp.GetRequiredService<IRoleEditor>(),
                 sp.GetRequiredService<IConfirmationDialog>(),
-                sp.GetRequiredService<ProfileDetailsViewModel.DatabaseDetailsFactory>()));
+                sp.GetRequiredService<ProfileDetailsViewModel.DatabaseDetailsFactory>(),
+                sp.GetRequiredService<IPostgresRoleMembershipService>(),
+                sp.GetRequiredService<IRoleMembershipEditor>()));
 
         // MainWindowViewModel needs IConnectionTester + IPostgresMetadataService for
         // background per-profile status + counter refresh on the list view.

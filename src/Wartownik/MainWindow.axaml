@@ -542,8 +542,18 @@
                                                                                     <TextBlock Text="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.CanLogin]}" />
                                                                                 </Border>
                                                                             </StackPanel>
+                                                                            <TextBlock Classes="caption"
+                                                                                       TextWrapping="Wrap"
+                                                                                       IsVisible="{Binding HasMemberships}"
+                                                                                       Text="{Binding MemberOfLabel}" />
                                                                         </StackPanel>
                                                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                                            <Button Classes="icon"
+                                                                                    Content="&#x1F465;"
+                                                                                    IsVisible="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).CanEditMembership}"
+                                                                                    ToolTip.Tip="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Membership.Action]}"
+                                                                                    Command="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).EditMembershipCommand}"
+                                                                                    CommandParameter="{Binding}" />
                                                                             <Button Classes="icon edit"
                                                                                     Content="&#x270E;"
                                                                                     ToolTip.Tip="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.Edit]}"
@@ -612,8 +622,18 @@
                                                                                     <TextBlock Text="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.NoLogin]}" />
                                                                                 </Border>
                                                                             </StackPanel>
+                                                                            <TextBlock Classes="caption"
+                                                                                       TextWrapping="Wrap"
+                                                                                       IsVisible="{Binding HasMemberships}"
+                                                                                       Text="{Binding MemberOfLabel}" />
                                                                         </StackPanel>
                                                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                                            <Button Classes="icon"
+                                                                                    Content="&#x1F465;"
+                                                                                    IsVisible="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).CanEditMembership}"
+                                                                                    ToolTip.Tip="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Membership.Action]}"
+                                                                                    Command="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).EditMembershipCommand}"
+                                                                                    CommandParameter="{Binding}" />
                                                                             <Button Classes="icon edit"
                                                                                     Content="&#x270E;"
                                                                                     ToolTip.Tip="{Binding $parent[ItemsControl].((vm:ProfileDetailsViewModel)DataContext).Localization[Roles.Edit]}"

@@ -469,6 +469,21 @@
   <data name="Roles.Edit" xml:space="preserve">
     <value>Edit role</value>
   </data>
+  <data name="Membership.Action" xml:space="preserve">
+    <value>Groups</value>
+  </data>
+  <data name="Membership.Title" xml:space="preserve">
+    <value>Groups for {0}</value>
+  </data>
+  <data name="Membership.Hint" xml:space="preserve">
+    <value>Tick the roles whose privileges this role should inherit.</value>
+  </data>
+  <data name="Membership.MemberOf" xml:space="preserve">
+    <value>Member of:</value>
+  </data>
+  <data name="Membership.NoGroups" xml:space="preserve">
+    <value>There are no other roles to join.</value>
+  </data>
   <data name="Roles.AlterFailed" xml:space="preserve">
     <value>Failed to alter role:</value>
   </data>
