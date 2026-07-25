@@ -3,6 +3,7 @@ using System.Globalization;
 using Wartownik.Connections;
 using Wartownik.Dialogs;
 using Wartownik.Localization;
+using Wartownik.Settings;
 using Wartownik.ViewModels;
 
 namespace Wartownik.UnitTests.ViewModels;
@@ -41,6 +42,29 @@ public class MainWindowViewModelTests
 
         return (new MainWindowViewModel(loc, profiles, editor, confirmation, tester, meta, factory),
             loc, profiles, editor, confirmation);
+    }
+
+    private static (MainWindowViewModel Vm, ILocalizationService Loc, FakeAppSettingsStore Store)
+        BuildWithStore(FakeAppSettingsStore store)
+    {
+        var loc = new LocalizationService(new EmptyResources(), new[] { English, Polish }, English);
+        var profiles = new FakeProfileService();
+        var editor = new FakeEditor();
+        var confirmation = new FakeConfirmationDialog { NextResult = true };
+        var meta = new FakeMetadataService();
+        var roleAdmin = new FakeRoleAdminService();
+        var roleEditor = new FakeRoleEditor();
+        var tester = new FakeConnectionTester();
+
+        ProfileDetailsViewModel.DatabaseDetailsFactory dbFactory = (p, db) =>
+            new DatabaseDetailsViewModel(p, db, loc, profiles, meta);
+        MainWindowViewModel.ProfileDetailsFactory factory = profile =>
+            new ProfileDetailsViewModel(profile, loc, profiles, meta, roleAdmin, roleEditor, confirmation, dbFactory);
+
+        var vm = new MainWindowViewModel(
+            loc, profiles, editor, confirmation, tester, meta, factory,
+            updates: null, profileExport: null, settingsStore: store);
+        return (vm, loc, store);
     }
 
     private static ConnectionProfile SampleProfile(string name = "Sample") =>
@@ -366,6 +390,184 @@ public class MainWindowViewModelTests
             new MainWindowViewModel(loc, profiles, editor, confirmation, tester, meta, null!));
     }
 
+    // ---------- App settings: language persistence ----------
+
+    [Fact]
+    public async Task InitializeAsync_applies_saved_language()
+    {
+        var store = new FakeAppSettingsStore { Current = new AppSettings { Language = "pl" } };
+        var (vm, loc, _) = BuildWithStore(store);
+
+        await vm.InitializeAsync();
+
+        Assert.Equal("pl", loc.CurrentLanguage.Name);
+        Assert.Equal("pl", vm.SelectedLanguage.Name);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_with_no_saved_language_keeps_the_default()
+    {
+        var store = new FakeAppSettingsStore(); // nothing saved yet
+        var (vm, loc, _) = BuildWithStore(store);
+
+        await vm.InitializeAsync();
+
+        Assert.Equal("en", loc.CurrentLanguage.Name);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_ignores_a_saved_language_we_no_longer_ship()
+    {
+        var store = new FakeAppSettingsStore { Current = new AppSettings { Language = "de" } };
+        var (vm, loc, _) = BuildWithStore(store);
+
+        await vm.InitializeAsync();
+
+        Assert.Equal("en", loc.CurrentLanguage.Name); // 'de' not in AvailableLanguages → stays default
+    }
+
+    [Fact]
+    public async Task InitializeAsync_restoring_a_language_does_not_write_it_back()
+    {
+        var store = new FakeAppSettingsStore { Current = new AppSettings { Language = "pl" } };
+        var (vm, _, _) = BuildWithStore(store);
+
+        await vm.InitializeAsync();
+
+        Assert.Equal(0, store.SaveCount); // restore path must not re-persist
+    }
+
+    [Fact]
+    public void Changing_language_persists_it_to_the_settings_store()
+    {
+        var store = new FakeAppSettingsStore();
+        var (vm, _, _) = BuildWithStore(store);
+
+        vm.SelectedLanguage = Polish;
+
+        Assert.Equal("pl", store.Current.Language);
+        Assert.Equal(1, store.SaveCount);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_survives_an_unreadable_settings_file()
+    {
+        // A corrupt settings.json makes the real store's deserialize throw. Startup must shrug it
+        // off: default language, and the profile list still loads.
+        var store = new FakeAppSettingsStore { ThrowOnLoad = true };
+        var (vm, loc, _) = BuildWithStore(store);
+
+        await vm.InitializeAsync();
+
+        Assert.Equal("en", loc.CurrentLanguage.Name);
+        Assert.NotNull(vm.Profiles); // LoadProfilesAsync still ran
+    }
+
+    [Fact]
+    public void Changing_language_survives_a_failing_settings_store()
+    {
+        var store = new FakeAppSettingsStore { ThrowOnSave = true };
+        var (vm, loc, _) = BuildWithStore(store);
+
+        vm.SelectedLanguage = Polish; // must not throw out of the setter
+
+        Assert.Equal("pl", loc.CurrentLanguage.Name); // the switch itself still took effect
+    }
+
+    [Fact]
+    public void Selecting_the_language_already_in_use_does_not_persist()
+    {
+        var store = new FakeAppSettingsStore();
+        var (vm, _, _) = BuildWithStore(store);
+
+        vm.SelectedLanguage = English; // already current — early-returns before persisting
+
+        Assert.Equal(0, store.SaveCount);
+    }
+
+    // ---------- App settings: navigation ----------
+
+    [Fact]
+    public void OpenSettings_shows_settings_and_hides_the_list()
+    {
+        var (vm, _, _, _, _) = Build();
+        Assert.True(vm.ShowProfileList);
+
+        vm.OpenSettingsCommand.Execute(null);
+
+        Assert.True(vm.IsViewingSettings);
+        Assert.False(vm.ShowProfileList);
+        Assert.False(vm.ShowProfileDetails);
+    }
+
+    [Fact]
+    public void CloseSettings_from_the_list_returns_to_the_list()
+    {
+        var (vm, _, _, _, _) = Build();
+        vm.OpenSettingsCommand.Execute(null);
+
+        vm.CloseSettingsCommand.Execute(null);
+
+        Assert.False(vm.IsViewingSettings);
+        Assert.True(vm.ShowProfileList);
+    }
+
+    [Fact]
+    public async Task Opening_settings_over_a_profile_preserves_and_restores_it()
+    {
+        var (vm, _, profiles, _, _) = Build();
+        profiles.Items.Add(SampleProfile());
+        await vm.LoadProfilesAsync();
+        await vm.OpenProfileCommand.ExecuteAsync(vm.Profiles[0]);
+        Assert.True(vm.ShowProfileDetails);
+
+        vm.OpenSettingsCommand.Execute(null);
+        Assert.True(vm.IsViewingSettings);
+        Assert.False(vm.ShowProfileDetails); // hidden…
+        Assert.NotNull(vm.Details);          // …but not discarded
+
+        vm.CloseSettingsCommand.Execute(null);
+        Assert.True(vm.ShowProfileDetails);  // back where we were
+        Assert.NotNull(vm.Details);
+    }
+
+    [Fact]
+    public async Task Opening_settings_takes_the_active_highlight_off_the_breadcrumb()
+    {
+        // The breadcrumb stays visible (it's where Done returns to) but must not stay highlighted
+        // alongside the Settings nav button — only one nav item reads as "you are here".
+        var (vm, _, profiles, _, _) = Build();
+        profiles.Items.Add(SampleProfile());
+        await vm.LoadProfilesAsync();
+        await vm.OpenProfileCommand.ExecuteAsync(vm.Profiles[0]);
+        Assert.True(vm.IsProfileLevelActive);
+
+        vm.OpenSettingsCommand.Execute(null);
+
+        Assert.True(vm.IsAtProfileLevel);        // still visible…
+        Assert.False(vm.IsProfileLevelActive);   // …but no longer the active one
+        Assert.False(vm.IsDatabaseLevelActive);
+
+        vm.CloseSettingsCommand.Execute(null);
+        Assert.True(vm.IsProfileLevelActive);    // highlight comes back
+    }
+
+    [Fact]
+    public async Task BackToProfiles_while_in_settings_clears_both()
+    {
+        var (vm, _, profiles, _, _) = Build();
+        profiles.Items.Add(SampleProfile());
+        await vm.LoadProfilesAsync();
+        await vm.OpenProfileCommand.ExecuteAsync(vm.Profiles[0]);
+        vm.OpenSettingsCommand.Execute(null);
+
+        await vm.BackToProfilesCommand.ExecuteAsync();
+
+        Assert.False(vm.IsViewingSettings);
+        Assert.Null(vm.Details);
+        Assert.True(vm.ShowProfileList);
+    }
+
     // ---------- Profile import ----------
 
     [Fact]
@@ -551,5 +753,27 @@ public class MainWindowViewModelTests
 
         public Task<AlterRoleRequest?> EditAsync(RoleSummary current, CancellationToken cancellationToken = default) =>
             Task.FromResult<AlterRoleRequest?>(null);
+    }
+
+    private sealed class FakeAppSettingsStore : IAppSettingsStore
+    {
+        public AppSettings Current { get; set; } = new();
+        public int SaveCount { get; private set; }
+        public bool ThrowOnLoad { get; set; }
+        public bool ThrowOnSave { get; set; }
+
+        public Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default) =>
+            ThrowOnLoad
+                ? Task.FromException<AppSettings>(new InvalidOperationException("settings.json is corrupt"))
+                : Task.FromResult(Current);
+
+        public Task SaveAsync(AppSettings settings, CancellationToken cancellationToken = default)
+        {
+            if (ThrowOnSave)
+                return Task.FromException(new IOException("disk is full"));
+            Current = settings;
+            SaveCount++;
+            return Task.CompletedTask;
+        }
     }
 }

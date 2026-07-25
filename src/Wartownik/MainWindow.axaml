@@ -111,14 +111,14 @@
 
                         <!-- Level 1: Connection profiles (always visible) -->
                         <Button Classes="nav"
-                                Classes.active="{Binding !IsViewingDetails}"
+                                Classes.active="{Binding ShowProfileList}"
                                 Content="{Binding Localization[Profiles.Title]}"
                                 Command="{Binding BackToProfilesCommand}" />
 
                         <!-- Level 2: profile name (visible when viewing details) -->
                         <Button Classes="nav"
                                 Margin="14,0,0,0"
-                                Classes.active="{Binding IsAtProfileLevel}"
+                                Classes.active="{Binding IsProfileLevelActive}"
                                 Content="{Binding Details.Profile.DisplayName, FallbackValue=''}"
                                 Command="{Binding Details.BackToDatabasesCommand}"
                                 IsVisible="{Binding IsViewingDetails}" />
@@ -126,7 +126,7 @@
                         <!-- Level 3: database name (visible when in database workspace) -->
                         <Button Classes="nav"
                                 Margin="28,0,0,0"
-                                Classes.active="{Binding IsAtDatabaseLevel}"
+                                Classes.active="{Binding IsDatabaseLevelActive}"
                                 Content="{Binding Details.SelectedDatabase.DatabaseName, FallbackValue=''}"
                                 IsVisible="{Binding IsAtDatabaseLevel}" />
 
@@ -153,20 +153,12 @@
 
                     <!-- Spacer (Row 2: *) -->
 
-                    <StackPanel Grid.Row="3" Spacing="8">
-                        <TextBlock Classes="eyebrow"
-                                   Text="Language"
-                                   Margin="6,0,0,0" />
-                        <ComboBox ItemsSource="{Binding AvailableLanguages}"
-                                  SelectedItem="{Binding SelectedLanguage}"
-                                  HorizontalAlignment="Stretch">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate DataType="globalization:CultureInfo">
-                                    <TextBlock Text="{Binding NativeName}" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </StackPanel>
+                    <Button Grid.Row="3"
+                            Classes="nav"
+                            HorizontalAlignment="Stretch"
+                            Classes.active="{Binding IsViewingSettings}"
+                            Content="{Binding Localization[Settings.Nav]}"
+                            Command="{Binding OpenSettingsCommand}" />
                 </Grid>
             </Border>
 
@@ -178,7 +170,7 @@
                 <!-- View 1: profile list -->
                 <Grid Margin="36,16,36,16"
                       RowDefinitions="Auto,Auto,Auto,*,Auto"
-                      IsVisible="{Binding !IsViewingDetails}">
+                      IsVisible="{Binding ShowProfileList}">
 
                     <DockPanel Grid.Row="0" LastChildFill="False">
                         <StackPanel DockPanel.Dock="Left" Spacing="3">
@@ -322,7 +314,7 @@
                 </Grid>
 
                 <!-- View 2: profile details -->
-                <ContentControl IsVisible="{Binding IsViewingDetails}"
+                <ContentControl IsVisible="{Binding ShowProfileDetails}"
                                 Content="{Binding Details}">
                     <ContentControl.ContentTemplate>
                         <DataTemplate DataType="vm:ProfileDetailsViewModel">
@@ -639,18 +631,6 @@
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
                                                 </StackPanel>
-                                            </ScrollViewer>
-                                        </TabItem>
-
-                                        <!-- ============ Settings tab ============ -->
-                                        <TabItem Header="{Binding Localization[Profiles.SettingsTab]}">
-                                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,16,12,0">
-                                                <Border Classes="card" Padding="20,28">
-                                                    <TextBlock Classes="subtle"
-                                                               HorizontalAlignment="Center"
-                                                               TextWrapping="Wrap"
-                                                               Text="{Binding Localization[Profiles.SettingsComingSoon]}" />
-                                                </Border>
                                             </ScrollViewer>
                                         </TabItem>
                                     </TabControl>
@@ -1454,6 +1434,47 @@
                         </DataTemplate>
                     </ContentControl.ContentTemplate>
                 </ContentControl>
+
+                <!-- View 3: application settings -->
+                <Grid Margin="36,16,36,16"
+                      RowDefinitions="Auto,*"
+                      IsVisible="{Binding IsViewingSettings}">
+
+                    <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,18">
+                        <StackPanel DockPanel.Dock="Left" Spacing="3">
+                            <TextBlock Classes="eyebrow" Text="{Binding Localization[Settings.Eyebrow]}" />
+                            <TextBlock Classes="h1" Text="{Binding Localization[Settings.Title]}" />
+                        </StackPanel>
+                        <Button DockPanel.Dock="Right"
+                                VerticalAlignment="Center"
+                                Content="{Binding Localization[Settings.Done]}"
+                                Command="{Binding CloseSettingsCommand}" />
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Row="1"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="16" MaxWidth="520" HorizontalAlignment="Left">
+                            <Border Classes="card" Padding="20,20">
+                                <StackPanel Classes="form-section">
+                                    <TextBlock Classes="label" Text="{Binding Localization[Settings.LanguageLabel]}" />
+                                    <ComboBox ItemsSource="{Binding AvailableLanguages}"
+                                              SelectedItem="{Binding SelectedLanguage}"
+                                              HorizontalAlignment="Stretch">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate DataType="globalization:CultureInfo">
+                                                <TextBlock Text="{Binding NativeName}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <TextBlock Classes="caption"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding Localization[Settings.LanguageHint]}" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
             </Grid>
         </Grid>
     </Grid>

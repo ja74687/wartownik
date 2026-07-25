@@ -4,6 +4,7 @@ using System.Globalization;
 using Wartownik.Connections;
 using Wartownik.Dialogs;
 using Wartownik.Localization;
+using Wartownik.Settings;
 using Wartownik.Updates;
 
 namespace Wartownik.ViewModels;
@@ -19,10 +20,13 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly IPostgresMetadataService _metadata;
     private readonly IUpdateService? _updates;
     private readonly IProfileExportDialog? _profileExport;
+    private readonly IAppSettingsStore? _settingsStore;
     private readonly ProfileDetailsFactory _detailsFactory;
 
     private readonly List<ConnectionProfileItemViewModel> _allProfiles = new();
     private ProfileDetailsViewModel? _details;
+    private AppSettings _settings = new();
+    private bool _isViewingSettings;
     private string _searchFilter = "";
     private UpdateInfo? _availableUpdate;
     private bool _isApplyingUpdate;
@@ -41,6 +45,8 @@ public sealed class MainWindowViewModel : ViewModelBase
     public AsyncRelayCommand InstallUpdateCommand { get; }
     public RelayCommand DismissUpdateCommand { get; }
     public AsyncRelayCommand ExportProfileCommand { get; }
+    public RelayCommand OpenSettingsCommand { get; }
+    public RelayCommand CloseSettingsCommand { get; }
 
     public MainWindowViewModel(
         ILocalizationService localization,
@@ -51,7 +57,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         IPostgresMetadataService metadata,
         ProfileDetailsFactory detailsFactory,
         IUpdateService? updates = null,
-        IProfileExportDialog? profileExport = null)
+        IProfileExportDialog? profileExport = null,
+        IAppSettingsStore? settingsStore = null)
     {
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(profiles);
@@ -69,6 +76,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         _metadata = metadata;
         _updates = updates;
         _profileExport = profileExport;
+        _settingsStore = settingsStore;
         _detailsFactory = detailsFactory;
 
         AddProfileCommand = new AsyncRelayCommand(AddProfileAsync);
@@ -80,6 +88,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         InstallUpdateCommand = new AsyncRelayCommand(InstallUpdateAsync, () => _availableUpdate is not null && !_isApplyingUpdate);
         DismissUpdateCommand = new RelayCommand(() => AvailableUpdate = null);
         ExportProfileCommand = new AsyncRelayCommand(ExportProfileAsync);
+        OpenSettingsCommand = new RelayCommand(() => IsViewingSettings = true);
+        CloseSettingsCommand = new RelayCommand(() => IsViewingSettings = false);
 
         Localization.PropertyChanged += OnLocalizationChanged;
     }
@@ -96,6 +106,10 @@ public sealed class MainWindowViewModel : ViewModelBase
                 RaisePropertyChanged(nameof(IsViewingDetails));
                 RaisePropertyChanged(nameof(IsAtProfileLevel));
                 RaisePropertyChanged(nameof(IsAtDatabaseLevel));
+                RaisePropertyChanged(nameof(IsProfileLevelActive));
+                RaisePropertyChanged(nameof(IsDatabaseLevelActive));
+                RaisePropertyChanged(nameof(ShowProfileList));
+                RaisePropertyChanged(nameof(ShowProfileDetails));
                 if (_details is not null)
                     _details.PropertyChanged += OnDetailsPropertyChanged;
             }
@@ -104,11 +118,42 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public bool IsViewingDetails => _details is not null;
 
+    /// <summary>
+    /// Whether the app-level Settings screen is showing. It overlays whatever the user was on
+    /// (profile list or a profile's details) without discarding it, so closing Settings returns
+    /// them to where they were.
+    /// </summary>
+    public bool IsViewingSettings
+    {
+        get => _isViewingSettings;
+        set
+        {
+            if (SetField(ref _isViewingSettings, value))
+            {
+                RaisePropertyChanged(nameof(ShowProfileList));
+                RaisePropertyChanged(nameof(ShowProfileDetails));
+                RaisePropertyChanged(nameof(IsProfileLevelActive));
+                RaisePropertyChanged(nameof(IsDatabaseLevelActive));
+            }
+        }
+    }
+
+    // The content region shows exactly one of three views. Settings, when open, wins over both;
+    // otherwise it's the profile list or a profile's details depending on whether one is open.
+    public bool ShowProfileList => !IsViewingDetails && !_isViewingSettings;
+    public bool ShowProfileDetails => IsViewingDetails && !_isViewingSettings;
+
     public bool IsAtProfileLevel =>
         _details is not null && !_details.IsViewingDatabase;
 
     public bool IsAtDatabaseLevel =>
         _details is not null && _details.IsViewingDatabase;
+
+    // Which breadcrumb is highlighted. Separate from IsAt*Level (which drives visibility) because
+    // the trail stays on screen while Settings overlays it — but Settings is then the active
+    // location, so no breadcrumb may claim the highlight at the same time.
+    public bool IsProfileLevelActive => IsAtProfileLevel && !_isViewingSettings;
+    public bool IsDatabaseLevelActive => IsAtDatabaseLevel && !_isViewingSettings;
 
     private void OnDetailsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -116,6 +161,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             RaisePropertyChanged(nameof(IsAtProfileLevel));
             RaisePropertyChanged(nameof(IsAtDatabaseLevel));
+            RaisePropertyChanged(nameof(IsProfileLevelActive));
+            RaisePropertyChanged(nameof(IsDatabaseLevelActive));
         }
     }
 
@@ -130,6 +177,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             if (string.Equals(Localization.CurrentLanguage.Name, value.Name, StringComparison.OrdinalIgnoreCase))
                 return;
             Localization.SetLanguage(value);
+            _settings = _settings with { Language = value.Name };
+            _ = PersistSettingsAsync();
         }
     }
 
@@ -152,6 +201,62 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             if (SetField(ref _searchFilter, value ?? ""))
                 ApplyFilter();
+        }
+    }
+
+    /// <summary>
+    /// One-time launch sequence: restore saved preferences (so the UI comes up in the user's
+    /// chosen language) before loading the profile list. Called once from App startup.
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        await LoadSettingsAsync().ConfigureAwait(true);
+        await LoadProfilesAsync().ConfigureAwait(true);
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        if (_settingsStore is null)
+            return;
+
+        try
+        {
+            _settings = await _settingsStore.LoadAsync().ConfigureAwait(true);
+        }
+        catch
+        {
+            // A corrupt or unreadable settings file must not block startup — fall back to defaults.
+            _settings = new AppSettings();
+            return;
+        }
+
+        if (_settings.Language is not { } saved)
+            return;
+
+        // Only apply a saved language we still ship; ignore a stale culture from an older build.
+        var match = Localization.AvailableLanguages
+            .FirstOrDefault(c => string.Equals(c.Name, saved, StringComparison.OrdinalIgnoreCase));
+        if (match is not null &&
+            !string.Equals(match.Name, Localization.CurrentLanguage.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            // Apply through the service directly (not the SelectedLanguage setter) so restoring a
+            // saved choice doesn't turn around and re-write the same value back to disk.
+            Localization.SetLanguage(match);
+        }
+    }
+
+    private async Task PersistSettingsAsync()
+    {
+        if (_settingsStore is null)
+            return;
+
+        try
+        {
+            await _settingsStore.SaveAsync(_settings).ConfigureAwait(true);
+        }
+        catch
+        {
+            // Persisting a preference is best-effort; a write failure shouldn't disrupt the UI.
         }
     }
 
@@ -368,6 +473,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private Task BackToProfilesAsync()
     {
+        IsViewingSettings = false;
         Details = null;
         return Task.CompletedTask;
     }

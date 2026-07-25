@@ -6,6 +6,7 @@ using Wartownik.Connections.Credentials;
 using Wartownik.Dialogs;
 using Wartownik.Localization;
 using Wartownik.Postgres;
+using Wartownik.Settings;
 using Wartownik.Sql;
 using Wartownik.Updates;
 using Wartownik.ViewModels;
@@ -42,6 +43,9 @@ public static class Bootstrapper
 
         services.AddSingleton<IAuditLogStore>(sp =>
             new JsonAuditLogStore(sp.GetRequiredService<AppPaths>().AuditLogFilePath));
+
+        services.AddSingleton<IAppSettingsStore>(sp =>
+            new JsonAppSettingsStore(sp.GetRequiredService<AppPaths>().SettingsFilePath));
 
         services.AddSingleton<ICredentialStore>(sp => CreateCredentialStore(sp.GetRequiredService<AppPaths>()));
 

@@ -24,7 +24,7 @@ public partial class App : Application
         {
             var viewModel = Services.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = new MainWindow { DataContext = viewModel };
-            _ = viewModel.LoadProfilesAsync();
+            _ = viewModel.InitializeAsync();
         }
 
         base.OnFrameworkInitializationCompleted();

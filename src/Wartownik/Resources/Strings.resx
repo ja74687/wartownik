@@ -94,11 +94,23 @@
   <data name="Profiles.TipImport" xml:space="preserve">
     <value>Tip · Drag a connection JSON file anywhere on this window to import it.</value>
   </data>
-  <data name="Profiles.SettingsTab" xml:space="preserve">
+  <data name="Settings.Nav" xml:space="preserve">
     <value>Settings</value>
   </data>
-  <data name="Profiles.SettingsComingSoon" xml:space="preserve">
-    <value>Profile settings (notifications, defaults, audit retention) — coming soon.</value>
+  <data name="Settings.Eyebrow" xml:space="preserve">
+    <value>Preferences</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Settings.Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Settings.LanguageLabel" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings.LanguageHint" xml:space="preserve">
+    <value>Choose the interface language. Your choice is remembered the next time you open Wartownik.</value>
   </data>
   <data name="Profiles.TipRolesTab" xml:space="preserve">
     <value>Tip · Use Users for login roles and Roles for groups (no-login).</value>

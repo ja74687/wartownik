@@ -94,11 +94,23 @@
   <data name="Profiles.TipImport" xml:space="preserve">
     <value>Wskazówka · Przeciągnij plik JSON z konfiguracją połączenia w to okno aby go zaimportować.</value>
   </data>
-  <data name="Profiles.SettingsTab" xml:space="preserve">
+  <data name="Settings.Nav" xml:space="preserve">
     <value>Ustawienia</value>
   </data>
-  <data name="Profiles.SettingsComingSoon" xml:space="preserve">
-    <value>Ustawienia profilu (powiadomienia, domyślne wartości, retencja audytu) — wkrótce.</value>
+  <data name="Settings.Eyebrow" xml:space="preserve">
+    <value>Preferencje</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>Ustawienia</value>
+  </data>
+  <data name="Settings.Done" xml:space="preserve">
+    <value>Gotowe</value>
+  </data>
+  <data name="Settings.LanguageLabel" xml:space="preserve">
+    <value>Język</value>
+  </data>
+  <data name="Settings.LanguageHint" xml:space="preserve">
+    <value>Wybierz język interfejsu. Twój wybór zostanie zapamiętany przy następnym uruchomieniu Wartownika.</value>
   </data>
   <data name="Profiles.TipRolesTab" xml:space="preserve">
     <value>Wskazówka · Użyj Users dla ról logowania, a Role dla grup (bez logowania).</value>
